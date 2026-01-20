@@ -1,0 +1,156 @@
+@import "../../styles/variables.scss";
+
+.settings-page {
+  min-height: 100vh;
+  padding: $spacing-lg;
+  background-color: #F9FAFB; // 显式浅灰背景，覆盖全局白底
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  font-size: 32rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-main;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.config-card {
+  background: $color-white;
+  border-radius: $radius-lg; // 32rpx
+  padding: $spacing-lg; // 32rpx
+  box-shadow: $shadow-sm;
+  display: flex;
+  flex-direction: column;
+  gap: 0; // 内部间距由 item margin 控制
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-md 0;
+
+  &:first-child {
+    padding-top: 0;
+  }
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.divider {
+  height: 1px;
+  background-color: $color-border;
+  width: 100%;
+  margin: $spacing-xs 0;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .label {
+    font-size: $font-base; // 中等字号
+    color: $color-text-main; // 深灰
+    font-weight: $font-weight-medium;
+  }
+
+  .value-display {
+    font-size: $font-base;
+    color: $color-primary; // Indigo
+    font-weight: $font-weight-bold;
+
+    &.highlight {
+      font-size: 40rpx; // 特大字号
+    }
+  }
+}
+
+/* Segment Control */
+.segment-control {
+  display: flex;
+  background: transparent;
+  gap: $spacing-sm;
+}
+
+.segment-item {
+  flex: 1;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid $color-border;
+  border-radius: 12rpx; // 圆角
+  background: transparent;
+  transition: all 0.2s;
+
+  text {
+    font-size: $font-sm;
+    color: $color-text-sub;
+  }
+
+  &.active {
+    background: $color-primary-light; // 淡紫
+    border-color: $color-primary;
+    
+    text {
+      color: $color-primary;
+      font-weight: $font-weight-bold;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    background: #F3F4F6;
+    border-color: #E5E7EB;
+    
+    text {
+      color: $color-text-placeholder;
+    }
+
+    &:active {
+      opacity: 0.5;
+    }
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.rule-explanation {
+  font-size: $font-xs;
+  color: $color-text-sub;
+  background: #F9FAFB;
+  padding: $spacing-sm;
+  border-radius: $radius-sm;
+  margin-top: $spacing-xs;
+  line-height: 1.5;
+}
+
+/* Slider Container */
+.slider-container {
+  padding: 0;
+  margin-top: -$spacing-xs; // 稍微抵消原生 Slider 的上下留白
+}
+
+/* Save Button */
+.save-btn {
+  margin-top: 48rpx;
+  background: #111827; // 深色背景
+  color: $color-white;
+  font-weight: $font-weight-bold;
+  font-size: $font-md;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: $radius-lg;
+  width: 100%;
+  
+  &:active {
+    background: #000000;
+  }
+}

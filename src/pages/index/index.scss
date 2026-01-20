@@ -1,0 +1,254 @@
+@import "../../styles/variables.scss";
+
+.dashboard {
+  min-height: 100vh;
+  padding: $spacing-lg;
+  background-color: $color-bg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+/* 1. Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-xs;
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    
+    .logo-icon {
+      font-size: 40rpx;
+    }
+    
+    .app-name {
+      font-size: 44rpx;
+      font-weight: 800; // Extra Bold
+      color: $color-text-main;
+    }
+  }
+}
+
+/* Scope Selector */
+.scope-selector {
+  display: flex;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4rpx;
+  border-radius: $radius-md;
+  
+  .scope-item {
+    flex: 1;
+    text-align: center;
+    padding: 12rpx 0;
+    border-radius: $radius-sm;
+    font-size: $font-sm;
+    color: $color-text-sub;
+    transition: all 0.2s ease;
+
+    &.active {
+      background: $color-white;
+      color: $color-text-main;
+      font-weight: $font-weight-bold;
+      box-shadow: $shadow-sm;
+    }
+  }
+}
+
+/* 2. Hero Card */
+.hero-card {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  border-radius: 32rpx;
+  padding: 40rpx;
+  color: $color-white;
+  box-shadow: 0 20rpx 40rpx -10rpx rgba(79, 70, 229, 0.4); // 弥散阴影
+  display: flex;
+  flex-direction: column;
+  gap: 40rpx;
+}
+
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  .date-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+
+    .sub-date {
+      font-size: $font-sm;
+      opacity: 0.8;
+    }
+
+    .main-title {
+      font-size: 40rpx;
+      font-weight: $font-weight-bold;
+    }
+  }
+
+  .percent-badge {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    padding: 8rpx 24rpx;
+    border-radius: $radius-full;
+    font-size: $font-lg;
+    font-weight: $font-weight-bold;
+    font-family: 'DIN', sans-serif;
+  }
+}
+
+.hero-progress {
+  .progress-track {
+    width: 100%;
+    height: 16rpx;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: $radius-full;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: $color-white;
+    border-radius: $radius-full;
+    transition: width 0.5s ease-out;
+  }
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: $spacing-md;
+
+  .stat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+
+    .label {
+      font-size: $font-xs;
+      opacity: 0.7;
+    }
+
+    .value {
+      font-size: 40rpx; // 20px
+      font-weight: $font-weight-bold;
+      font-family: 'DIN', sans-serif;
+      
+      .unit {
+        font-size: $font-xs;
+        font-weight: normal;
+        opacity: 0.8;
+      }
+
+      &.warning {
+        color: #FCD34D; // Amber-300
+      }
+    }
+  }
+}
+
+/* 3. Details List */
+.details-section {
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+    padding-left: $spacing-xs;
+
+    .title {
+      font-size: $font-md;
+      font-weight: $font-weight-bold;
+      color: $color-text-main;
+    }
+  }
+}
+
+.details-card {
+  background: $color-white;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  box-shadow: $shadow-sm;
+
+  .divider {
+    height: 1px;
+    background: $color-border;
+    transform: scaleY(0.5);
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    padding: $spacing-md 0;
+    
+    .icon-box {
+      width: 64rpx;
+      height: 64rpx;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: $spacing-md;
+
+      &.blue { background: #EEF2FF; }
+      &.orange { background: #FFEDD5; }
+      &.green { background: #ECFDF5; }
+    }
+
+    .row-label {
+      flex: 1;
+      font-size: $font-base;
+      color: $color-text-main;
+    }
+
+    .row-value {
+      font-size: $font-md;
+      font-weight: $font-weight-bold;
+      color: $color-text-main;
+      font-family: 'DIN', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 12rpx;
+
+      .original-value {
+        font-size: $font-sm;
+        color: $color-text-placeholder;
+        text-decoration: line-through;
+        font-weight: normal;
+      }
+    }
+  }
+}
+
+/* 4. Action Button */
+.bottom-action {
+  margin-top: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+
+  .primary-btn {
+    width: 100%;
+    height: 112rpx; // 56px
+    background: #EEF2FF; // Primary-50
+    color: $color-primary;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-md;
+    font-weight: $font-weight-bold;
+    border: none;
+    
+    &:active {
+      background: #E0E7FF; // darken(#EEF2FF, 5%)
+    }
+    
+    &::after {
+      border: none;
+    }
+  }
+}

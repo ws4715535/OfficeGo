@@ -1,0 +1,168 @@
+@import "../../styles/variables.scss";
+
+.calendar-page {
+  min-height: 100vh;
+  padding: $spacing-lg;
+  box-sizing: border-box;
+  background-color: $color-bg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+/* 1. Navbar */
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-xs 0;
+
+  .page-title {
+    font-size: 48rpx; // 大标题
+    font-weight: 800;
+    color: $color-text-main;
+  }
+
+  .month-switcher {
+    display: flex;
+    align-items: center;
+    background: #F3F4F6;
+    border-radius: 999px;
+    padding: 10rpx $spacing-md; // 增加 padding
+    gap: $spacing-sm;
+
+    .current-month {
+      font-size: $font-md; // 增大字号
+      font-weight: $font-weight-bold;
+      color: $color-text-main;
+      min-width: 180rpx; // 稍微加宽
+      text-align: center;
+    }
+
+    .arrow-btn {
+      padding: 8rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.6;
+      
+      &:active {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+// /* 2. Calendar Card */
+// .calendar-card {
+//   background: $color-white;
+//   border-radius: 32rpx;
+//   padding: $spacing-md;
+//   box-shadow: $shadow-card;
+//   overflow: hidden;
+
+//   // NutUI Overrides
+//   .nut-calendar-card {
+//     // 隐藏自带的头部，因为我们自定义了
+//     .nut-calendar-card-header {
+//       display: none;
+//     }
+    
+//     // 调整 Grid 间距
+//     // .nut-calendar-card-days {
+//     //   gap: 12rpx;
+//     // }
+
+//     // // 缩小单元格高度，解决"太大"的问题
+//     .nut-calendar-card-day {
+//       height: 90rpx; // 增加单元格总高度 (原 80rpx)
+//       min-height: 90rpx;
+//       margin-bottom: 24rpx; // 增大垂直间距 (原 12rpx)
+//     }
+//   }
+// }
+
+// /* Day Cell Styles */
+// .day-cell {
+//   width: 72rpx; // 缩小圆形直径 (原 80rpx)
+//   height: 72rpx; // 缩小圆形直径 (原 80rpx)
+//   display: flex;
+//   align-items: center;
+//   justify-content: center;
+//   background: $color-white;
+//   color: $color-text-main;
+//   font-size: 32rpx; // 增大日期字号 (原 $font-base 约 28rpx)
+//   font-weight: $font-weight-medium;
+//   transition: all 0.2s ease;
+//   margin: 0 auto; // 确保在单元格内居中
+
+//   .day-text {
+//     position: relative;
+//     z-index: 1;
+//   }
+
+//   // 状态：其他月份
+//   &.other-month {
+//     opacity: 0;
+//     pointer-events: none;
+//   }
+
+//   // 状态：周末
+//   &.is-weekend {
+//     background: #F9FAFB;
+//     color: $color-text-placeholder;
+//   }
+
+//   // 状态：今天
+//   &.is-today {
+//     border: 2px solid $color-primary;
+//     // 如果同时是周末，背景保持周末灰，边框蓝色
+//     // 如果同时是Office，背景变蓝，边框不再明显
+//   }
+
+//   // 状态：已到岗
+//   &.is-office {
+//     background: $color-primary !important; // 覆盖周末背景
+//     color: $color-white !important;
+//   }
+
+//   // 状态：请假
+//   &.is-leave {
+//     background: $color-leave !important; // Orange
+//     color: $color-white !important;
+//   }
+
+//   &:active {
+//     transform: scale(0.95);
+//   }
+// }
+
+/* 4. Legend */
+.legend-container {
+  margin-top: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding-left: $spacing-sm;
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    .dot {
+      width: 20rpx;
+      height: 20rpx;
+      border-radius: 50%;
+
+      &.office { background: $color-primary; }
+      &.leave { background: $color-leave; } // Using configured leave color
+    }
+
+    .legend-text {
+      font-size: $font-xs;
+      color: $color-text-sub;
+      font-weight: $font-weight-medium;
+    }
+  }
+}
