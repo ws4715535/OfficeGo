@@ -28,5 +28,6 @@ export default defineAppConfig({
         selectedIconPath: 'assets/tabbar/calendar-active.png'
       }
     ]
-  }
+  },
+  lazyCodeLoading: 'requiredComponents'
 })
