@@ -141,7 +141,7 @@
 /* Save Button */
 .save-btn {
   margin-top: 48rpx;
-  background: #111827; // 深色背景
+  background: $color-primary; // Theme color
   color: $color-white;
   font-weight: $font-weight-bold;
   font-size: $font-md;
@@ -151,6 +151,6 @@
   width: 100%;
   
   &:active {
-    background: #000000;
+    background: $color-primary-dark;
   }
 }

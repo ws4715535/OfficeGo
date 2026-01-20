@@ -25,7 +25,16 @@ export default function Settings() {
       frequency
     }
     saveSettings(newSettings)
-    Taro.navigateBack()
+    
+    Taro.showToast({
+      title: '保存成功',
+      icon: 'success',
+      duration: 1500
+    })
+    
+    setTimeout(() => {
+      Taro.navigateBack()
+    }, 1500)
   }
 
   const handleFrequencyChange = (val) => {
