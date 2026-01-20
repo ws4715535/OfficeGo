@@ -1,0 +1,53 @@
+/* --- 主色调 (Primary - Indigo) --- */
+$color-primary: #4F46E5;       // Indigo-600 (主按钮、选中状态、进度条)
+$color-primary-light: #EEF2FF; // Indigo-50 (浅色背景、未选中Tag)
+$color-primary-dark: #4338CA;  // Indigo-700 (按钮点击态)
+$color-gradient-start: #4F46E5; // 渐变起
+$color-gradient-end: #7C3AED;   // Violet-700 (渐变止)
+
+/* --- 功能色 (Functional) --- */
+$color-success: #4F46E5;       // MVP中“已到岗”使用主色
+$color-warning: #F59E0B;       // Amber-500 (剩余天数警告)
+$color-leave: #EA580C;         // Orange-600 (请假图标/文字)
+$color-leave-bg: #FFEDD5;      // Orange-100 (请假背景)
+$color-white: #FFFFFF;
+
+/* --- 中性色 (Neutral) --- */
+$color-bg: #FFFFFF;            // White (全白背景)
+$color-text-main: #1F2937;     // Gray-800 (主要文字 - 标题)
+$color-text-sub: #6B7280;      // Gray-500 (次要文字 - 说明)
+$color-text-placeholder: #9CA3AF; // Gray-400 (失效/占位)
+$color-border: #F3F4F6;        // Gray-100 (边框/分割线)
+$color-divider: #E5E7EB;       // Gray-200 (较深分割线)
+
+/* --- 字号 (Font Size) --- */
+$font-xs: 20rpx;    // 10px - 标签、极小说明
+$font-sm: 24rpx;    // 12px - 次要信息、辅助文字
+$font-base: 28rpx;  // 14px - 正文、列表项
+$font-md: 32rpx;    // 16px - 按钮文字、小标题
+$font-lg: 36rpx;    // 18px - 页面标题、卡片标题
+$font-xl: 40rpx;    // 20px - 突出数字
+$font-xxl: 60rpx;   // 30px - 核心大数字 (如进度百分比)
+
+/* --- 字重 (Font Weight) --- */
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 600; // iOS中文通常没有700/800，600即为加粗
+
+/* --- 圆角 (Border Radius) --- */
+$radius-sm: 12rpx;  // 小标签、输入框
+$radius-md: 24rpx;  // 普通卡片、日历格子
+$radius-lg: 32rpx;  // 大卡片、主按钮
+$radius-full: 999px; // 圆形、胶囊按钮
+
+/* --- 间距 (Spacing) --- */
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx; // 常用内容间距
+$spacing-lg: 32rpx; // 页面边距 (Page Padding)
+$spacing-xl: 48rpx; // 区块间距
+
+/* --- 阴影 (Shadow) --- */
+$shadow-sm: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+$shadow-card: 0 8rpx 24rpx rgba(0, 0, 0, 0.06);
+$shadow-float: 0 16rpx 48rpx rgba(79, 70, 229, 0.25); // 主色调弥散阴影

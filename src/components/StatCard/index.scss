@@ -1,0 +1,46 @@
+@import "../../styles/variables.scss";
+
+.stat-card {
+  background: $color-white;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  box-shadow: $shadow-sm;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+
+  &__title {
+    font-size: $font-sm;
+    color: $color-text-sub;
+  }
+
+  &__content {
+    display: flex;
+    align-items: baseline;
+    gap: 4rpx;
+  }
+
+  &__value {
+    font-size: $font-xl;
+    font-weight: $font-weight-bold;
+    color: $color-text-main;
+    font-family: 'DIN', sans-serif;
+  }
+
+  &__unit {
+    font-size: $font-xs;
+    color: $color-text-sub;
+  }
+
+  &--primary {
+    .stat-card__value { color: $color-primary; }
+  }
+  
+  &--warning {
+    .stat-card__value { color: $color-warning; }
+  }
+
+  &--success {
+    .stat-card__value { color: $color-success; }
+  }
+}
