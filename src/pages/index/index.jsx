@@ -1,8 +1,11 @@
-import { View, Text, Button } from '@tarojs/components'
+import { View, Text, Button, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import React, { useState } from 'react'
-import { Progress } from '@nutui/nutui-react-taro'
-import { Setting, Clock, Check, Order, CheckDisabled } from '@nutui/icons-react-taro'
+import { Check } from '@nutui/icons-react-taro'
+import settingIcon from '../../assets/setting.png'
+import statisticIcon from '../../assets/statistic.png'
+import timeIcon from '../../assets/time.png'
+import takeoffIcon from '../../assets/takeoff.png'
+import targetIcon from '../../assets/target.png'
 import { useDashboard } from '../../hooks/useDashboard'
 import './index.scss'
 
@@ -26,7 +29,7 @@ export default function Index() {
           <Text className='app-name'>来了么到岗助手!</Text>
         </View>
         <View className='settings-icon' onClick={navigateToSettings}>
-          <Text className='app-name'>设置</Text>
+          <Image src={settingIcon} style={{ width: '32rpx', height: '32rpx' }} />
         </View>
       </View>
 
@@ -70,14 +73,14 @@ export default function Index() {
       {/* 3. Details List */}
       <View className='details-section'>
         <View className='section-header'>
-          <Order size={18} color='#333' />
+          <Image src={statisticIcon} style={{ width: '32rpx', height: '32rpx' }} />
           <Text className='title'>本月明细</Text>
         </View>
         
         <View className='details-card'>
           <View className='detail-row'>
-            <View className='icon-box blue'>
-              <Clock size={16} color='#4F46E5' />
+            <View className='icon-box blue'>           
+           <Image src={timeIcon} style={{ width: '40rpx', height: '40rpx' }} />
             </View>
             <Text className='row-label'>本月有效工作日</Text>
             <View className='row-value'>
@@ -92,7 +95,7 @@ export default function Index() {
 
           <View className='detail-row'>
             <View className='icon-box orange'>
-              <CheckDisabled size={16} color='#EA580C' />
+           <Image src={takeoffIcon} style={{ width: '40rpx', height: '40rpx' }} />
             </View>
             <Text className='row-label'>累计请假</Text>
             <Text className='row-value'>{stats.leaveDays} 天</Text>
@@ -102,7 +105,7 @@ export default function Index() {
 
           <View className='detail-row'>
             <View className='icon-box green'>
-              <Check size={16} color='#059669' />
+              <Image src={targetIcon} style={{ width: '44rpx', height: '44rpx' }} />
             </View>
             <Text className='row-label'>本月总目标</Text>
             <Text className='row-value'>{stats.targetDays} 天</Text>

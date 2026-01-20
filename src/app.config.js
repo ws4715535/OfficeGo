@@ -19,7 +19,7 @@ export default defineAppConfig({
         pagePath: 'pages/index/index',
         text: '首页',
         iconPath: 'assets/tabbar/home.png',
-        selectedIconPath: 'assets/tabbar/home-active.png'
+        selectedIconPath: 'assets/tabbar/home-active.png',
       },
       {
         pagePath: 'pages/calendar/index',
