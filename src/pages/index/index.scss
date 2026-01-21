@@ -19,15 +19,18 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: $spacing-xs;
     
-    .logo-icon {
-      font-size: 40rpx;
+    .user-avatar-small {
+        width: 60rpx;
+        height: 60rpx;
+        border-radius: 50%;
+        margin-right: 16rpx;
+        background: #F3F4F6;
     }
-    
+
     .app-name {
-      font-size: 44rpx;
-      font-weight: 800; // Extra Bold
+      font-size: 36rpx;
+      font-weight: 800;
       color: $color-text-main;
     }
 
@@ -93,20 +96,17 @@
 }
 
 /* 2. Team Banner */
-.team-banner-container {
-  margin-bottom: $spacing-md;
-}
 
 .team-banner {
   background: $color-primary; // Indigo-600
   border-radius: $radius-full;
-  padding: 12rpx 24rpx; // Slim pill shape
+  padding: 6rpx 16rpx; // Reduce padding further
   display: flex;
   align-items: center;
   justify-content: space-between;
   box-shadow: $shadow-card;
   color: $color-white;
-  height: 88rpx; // Fixed height
+  height: 64rpx; // Reduce height to 64rpx
 
   .avatars {
     display: flex;
@@ -114,8 +114,8 @@
     margin-right: $spacing-sm;
 
     .avatar {
-      width: 56rpx;
-      height: 56rpx;
+      width: 40rpx; // Reduce size to 40rpx
+      height: 40rpx;
       border-radius: 50%;
       border: 2rpx solid $color-white; // Blend with bg
       background: #E0E7FF;

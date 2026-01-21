@@ -25,6 +25,53 @@ const AuthService = {
   },
 
   /**
+   * Update User Info
+   * @param {object} data - { nickName, avatarUrl, settings, isOnboarded }
+   */
+  updateUser: async (data) => {
+    try {
+      const res = await Taro.cloud.callFunction({
+        name: 'updateUser',
+        data: data
+      })
+      console.log('AuthService Update Result:', res)
+      if (res.result.code === 0) {
+        // Update local storage
+        const currentUser = Taro.getStorageSync('userInfo') || {}
+        const newUser = { ...currentUser, ...data }
+        Taro.setStorageSync('userInfo', newUser)
+        return newUser
+      } else {
+        throw new Error(res.result.message || 'Update failed')
+      }
+    } catch (error) {
+      console.error('AuthService Update Error:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Delete User (For Debug/Testing)
+   */
+  deleteUser: async () => {
+    try {
+      const res = await Taro.cloud.callFunction({
+        name: 'deleteUser'
+      })
+      console.log('AuthService Delete Result:', res)
+      if (res.result.code === 0) {
+        Taro.clearStorageSync()
+        return true
+      } else {
+        throw new Error(res.result.message || 'Delete failed')
+      }
+    } catch (error) {
+      console.error('AuthService Delete Error:', error)
+      throw error
+    }
+  },
+
+  /**
    * Get User Profile (Mock/Placeholder for now)
    * Future: Integrate with onChooseAvatar
    */
