@@ -1,17 +1,44 @@
 import { View, Text, Button, Image } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import React, { useState, useEffect } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Check } from '@nutui/icons-react-taro'
 import settingIcon from '../../assets/setting.png'
 import statisticIcon from '../../assets/statistic.png'
 import timeIcon from '../../assets/time.png'
 import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
+import rightArrowIcon from '../../assets/right_arrow.png'
 import { useDashboard } from '../../hooks/useDashboard'
+import { TEAMS, getMembersForDay } from '../../services/mockTeamData'
 import './index.scss'
 
 export default function Index() {
   const { year, month, stats } = useDashboard()
-  // const [scope, setScope] = useState('month') // MVP: 默认月度，暂时移除切换
+  const [teamState, setTeamState] = useState({
+    hasTeam: false,
+    officeMembers: [],
+    totalOffice: 0
+  })
+
+  useDidShow(() => {
+    // Check if user has any teams
+    const hasTeam = TEAMS.length > 0
+    
+    if (hasTeam) {
+      const today = new Date().getDay() - 1 // 0=Mon
+      // Use currentTeam (first one) for MVP
+      const members = getMembersForDay(TEAMS[0].id, today)
+      const office = members.filter(m => m.status === 'OFFICE')
+      
+      setTeamState({
+        hasTeam: true,
+        officeMembers: office,
+        totalOffice: office.length
+      })
+    } else {
+      setTeamState({ hasTeam: false, officeMembers: [], totalOffice: 0 })
+    }
+  })
 
   const navigateToCalendar = () => {
     Taro.switchTab({ url: '/pages/calendar/index' })
@@ -19,6 +46,16 @@ export default function Index() {
 
   const navigateToSettings = () => {
     Taro.navigateTo({ url: '/pages/settings/index' })
+  }
+
+  const handleBannerClick = () => {
+    if (teamState.hasTeam) {
+      // Go to Team Tab
+      Taro.switchTab({ url: '/pages/team/index' })
+    } else {
+      // Join Team Action (Mock)
+      Taro.showToast({ title: '邀请功能开发中', icon: 'none' })
+    }
   }
 
   return (
@@ -33,7 +70,33 @@ export default function Index() {
         </View>
       </View>
 
-      {/* 2. Hero Progress Card */}
+      {/* 2. Team Banner (New) */}
+      <View className='team-banner-container'>
+        <View className='team-banner' onClick={handleBannerClick}>
+          {teamState.hasTeam ? (
+            <>
+              <View className='avatars'>
+                {teamState.officeMembers.slice(0, 3).map((m, i) => (
+                  <Image key={m.id} src={m.avatar} className='avatar' style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0 }} />
+                ))}
+              </View>
+              <View className='banner-text'>
+                <Text className='flip-wrapper'>
+                  今天 {teamState.officeMembers[0]?.name || '大家'} 等 {teamState.totalOffice} 人在公司
+                </Text>
+              </View>
+            </>
+          ) : (
+            <Text className='banner-text'>加入一个团队吧！</Text>
+          )}
+          
+          <View className='arrow-btn'>
+            <Image src={rightArrowIcon} className='arrow-icon' />
+          </View>
+        </View>
+      </View>
+
+      {/* 3. Hero Progress Card */}
       <View className='hero-card'>
         <View className='hero-header'>
           <View className='date-block'>

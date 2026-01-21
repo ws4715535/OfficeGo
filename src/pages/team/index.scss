@@ -1,0 +1,461 @@
+@import "../../styles/variables.scss";
+
+$color-white-fixed: #FFFFFF; // Fallback definition
+
+.team-page {
+  min-height: 100vh;
+  padding: $spacing-lg;
+  background-color: transparent; // Uses page background
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+/* 1. Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-xs;
+
+  .team-switcher {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    padding: 12rpx 24rpx;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: $radius-full;
+    transition: all 0.2s ease;
+
+    &:active {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    .title {
+      font-size: 36rpx;
+      font-weight: 800;
+      color: $color-text-main;
+    }
+
+    .arrow-icon {
+      width: 32rpx;
+      height: 32rpx;
+      opacity: 0.6;
+    }
+  }
+
+  .header-actions {
+      display: flex;
+      gap: 20rpx; // Increased gap slightly
+    }
+
+    .action-btn {
+      height: 72rpx; // Fixed height for consistency
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: $radius-full;
+      transition: all 0.2s ease;
+      
+      // Primary style for "Add/Join"
+      &.primary {
+        background: #EEF2FF; // Light Indigo bg
+        padding: 0 32rpx;
+        gap: 8rpx;
+
+        .icon {
+          width: 32rpx;
+          height: 32rpx;
+        }
+
+        .label {
+          font-size: $font-sm;
+          font-weight: $font-weight-bold;
+          color: $color-primary;
+        }
+
+        &:active {
+          background: #E0E7FF;
+        }
+      }
+
+      // Icon-only style for "Settings"
+      &.icon-only {
+        background: $color-white;
+        width: 72rpx; // Square
+        border: 2rpx solid #F3F4F6; // Light border
+        
+        .icon {
+          width: 36rpx;
+          height: 36rpx;
+          opacity: 0.6;
+        }
+
+        &:active {
+          background: #F9FAFB;
+        }
+      }
+    }
+}
+
+/* 2. Best Day Card */
+.best-day-card {
+  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); // Orange gradient
+  border-radius: 40rpx;
+  padding: 40rpx;
+  color: $color-white-fixed;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20rpx 40rpx -10rpx rgba(255, 107, 107, 0.4);
+
+  .card-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8rpx;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8rpx 16rpx;
+    border-radius: $radius-full;
+    align-self: flex-start;
+    font-size: $font-xs;
+    font-weight: $font-weight-bold;
+  }
+
+  .main-date {
+    font-size: 64rpx;
+    font-weight: 800;
+    margin: $spacing-xs 0;
+  }
+
+  .desc {
+    font-size: $font-sm;
+    opacity: 0.9;
+    line-height: 1.4;
+    max-width: 80%;
+  }
+
+  .bg-decoration {
+    position: absolute;
+    right: -20rpx;
+    bottom: -40rpx;
+    font-size: 240rpx;
+    opacity: 0.1;
+    z-index: 1;
+    transform: rotate(-15deg);
+  }
+}
+
+/* Section Containers */
+.section-container {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  .section-header-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding-left: $spacing-xs;
+  }
+
+  .section-title {
+    font-size: $font-md;
+    font-weight: $font-weight-bold;
+    color: $color-text-main;
+  }
+
+  .date-range {
+    font-size: $font-sm;
+    color: $color-text-sub;
+    font-weight: normal;
+  }
+  .member-count {
+    font-size: $font-sm;
+    color: $color-text-sub;
+    font-weight: normal;
+    margin-left: 8rpx;
+  }
+}
+
+/* 3. Week Chart */
+.week-chart {
+  background: $color-white;
+  border-radius: 40rpx; // Match design rounded look
+  padding: 40rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 240rpx;
+  box-shadow: $shadow-sm;
+
+  .day-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-sm;
+    flex: 1;
+    height: 100%;
+    justify-content: flex-end;
+    position: relative; // For absolute positioning of today-dot
+
+    .bar-container {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: $spacing-xs;
+    }
+
+    .bar {
+      width: 24rpx; // Fixed width
+      background: #F3F4F6;
+      border-radius: $radius-full;
+      transition: all 0.3s ease;
+
+      &.best {
+        // background: $color-primary; // No longer needed per request
+      }
+    }
+
+    .day-label {
+      font-size: $font-xs;
+      color: $color-text-sub;
+    }
+
+    .today-dot {
+      width: 8rpx;
+      height: 8rpx;
+      background: $color-primary;
+      border-radius: 50%;
+      margin-top: 4rpx;
+      position: absolute;
+      bottom: -12rpx;
+    }
+
+    &.active {
+      .bar {
+        // width: 40rpx; // REMOVED: Keep width consistent
+        background: $color-primary;
+        box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.3);
+      }
+      
+      .day-label {
+        color: $color-primary;
+        font-weight: $font-weight-bold;
+      }
+    }
+  }
+}
+
+/* 4. Member List */
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.member-card {
+  background: $color-white;
+  padding: $spacing-md;
+  border-radius: 32rpx; // Capsule shape
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  box-shadow: $shadow-sm;
+
+  .avatar-container {
+    position: relative;
+    
+    .avatar {
+      width: 88rpx;
+      height: 88rpx;
+      border-radius: 50%;
+      background: #F3F4F6;
+    }
+
+    .online-dot {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 24rpx;
+      height: 24rpx;
+      background: #10B981;
+      border: 4rpx solid $color-white;
+      border-radius: 50%;
+    }
+  }
+
+  .info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      
+      .name {
+        font-size: $font-md;
+        font-weight: $font-weight-bold;
+        color: $color-text-main;
+      }
+      
+      .me-badge {
+        font-size: $font-sm;
+      }
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      
+      .status-icon {
+        font-size: $font-xs;
+      }
+      
+      .status-text {
+        font-size: $font-sm;
+        color: $color-text-sub;
+      }
+    }
+  }
+
+  .status-tag {
+    padding: 8rpx 24rpx;
+    border-radius: $radius-full;
+    font-size: $font-xs;
+    font-weight: $font-weight-medium;
+
+    &.office {
+      background: #ECFDF5;
+      color: #059669;
+    }
+
+    &.remote {
+      background: #F3F4F6; // Gray-100
+      color: $color-text-sub;
+    }
+  }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  width: 80%;
+  max-width: 600rpx;
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 48rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 40rpx;
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  .modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24rpx;
+    
+    .icon-box {
+      width: 96rpx;
+      height: 96rpx;
+      background: #EEF2FF;
+      border-radius: 32rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      .hash {
+        font-size: 48rpx;
+        color: -primary;
+        font-weight: bold;
+      }
+    }
+    
+    .modal-title {
+      font-size: 36rpx;
+      font-weight: 800;
+      color: -text-main;
+    }
+  }
+  
+  .modal-input {
+    background: #F9FAFB;
+    border: 2rpx solid #E5E7EB;
+    border-radius: 24rpx;
+    height: 96rpx;
+    padding: 0 32rpx;
+    font-size: 32rpx;
+    text-align: center;
+    color: -text-main;
+    
+    &:focus {
+      border-color: -primary;
+      background: #fff;
+    }
+  }
+  
+  .modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 24rpx;
+    align-items: center;
+    
+    .modal-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &.confirm {
+        height: 88rpx;
+        background: -primary;
+        color: #fff;
+        border-radius: -full;
+        font-size: 32rpx;
+        font-weight: bold;
+        box-shadow: 0 8rpx 20rpx rgba(79, 70, 229, 0.25);
+        
+        &:active { transform: scale(0.98); }
+      }
+      
+      &.cancel {
+        font-size: 28rpx;
+        color: -text-sub;
+        padding: 16rpx;
+        
+        &:active { opacity: 0.7; }
+      }
+    }
+  }
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}

@@ -58,7 +58,85 @@
   }
 }
 
-/* 2. Hero Card */
+/* 2. Team Banner */
+.team-banner-container {
+  margin-bottom: $spacing-md;
+}
+
+.team-banner {
+  background: $color-primary; // Indigo-600
+  border-radius: $radius-full;
+  padding: 12rpx 24rpx; // Slim pill shape
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: $shadow-card;
+  color: $color-white;
+  height: 88rpx; // Fixed height
+
+  .avatars {
+    display: flex;
+    align-items: center;
+    margin-right: $spacing-sm;
+
+    .avatar {
+      width: 56rpx;
+      height: 56rpx;
+      border-radius: 50%;
+      border: 2rpx solid $color-white; // Blend with bg
+      background: #E0E7FF;
+    }
+  }
+
+  .banner-text {
+      flex: 1;
+      font-size: $font-sm;
+      font-weight: $font-weight-medium;
+      margin-left: 8rpx;
+      overflow: hidden;
+      height: 40rpx; // Fixed height for flip
+      position: relative;
+  
+      // Flip Animation
+      .flip-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        animation: slideUp 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation-delay: 1s;
+      }
+    }
+  
+    @keyframes slideUp {
+      0%, 20% { transform: translateY(100%); opacity: 0; }
+      25%, 90% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-100%); opacity: 0; }
+    }
+
+  .arrow-btn {
+    width: 48rpx;
+    height: 48rpx;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: $spacing-sm;
+
+    .arrow-icon {
+      width: 32rpx;
+      height: 32rpx;
+    }
+  }
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.99);
+  }
+}
+
+/* 3. Hero Progress Card */
 .hero-card {
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
   border-radius: 32rpx;

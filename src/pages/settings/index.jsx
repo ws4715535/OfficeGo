@@ -1,13 +1,17 @@
-import { View, Text, Slider, Button } from '@tarojs/components'
+import { View, Text, Slider, Button, Switch } from '@tarojs/components'
 import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { getSettings, saveSettings } from '../../services/storage'
+import { TEAMS, joinTeam, leaveTeam } from '../../services/mockTeamData'
 import './index.scss'
 
 export default function Settings() {
   const [frequency, setFrequency] = useState('MONTH') // MONTH, WEEK, BIWEEK
   const [targetRatio, setTargetRatio] = useState(40)
   const [roundType, setRoundType] = useState('ceil') // ceil, round, floor
+  
+  // Debug State
+  const [hasTeam, setHasTeam] = useState(false)
 
   useEffect(() => {
     const saved = getSettings()
@@ -16,7 +20,30 @@ export default function Settings() {
       if (saved.roundType) setRoundType(saved.roundType)
       if (saved.frequency) setFrequency(saved.frequency)
     }
+    
+    // Check Team Status
+    setHasTeam(TEAMS.length > 0)
   }, [])
+
+  const handleToggleTeam = (e) => {
+    const shouldHaveTeam = e.detail.value
+    if (shouldHaveTeam) {
+      if (TEAMS.length === 0) {
+        joinTeam('DEBUG') // Create a debug team
+        setHasTeam(true)
+        Taro.showToast({ title: '已加入Debug团队', icon: 'none' })
+      }
+    } else {
+      if (TEAMS.length > 0) {
+        // Clear all teams
+        while(TEAMS.length > 0) {
+          TEAMS.pop()
+        }
+        setHasTeam(false)
+        Taro.showToast({ title: '已清空团队', icon: 'none' })
+      }
+    }
+  }
 
   const handleSave = () => {
     const newSettings = {
@@ -147,6 +174,18 @@ export default function Settings() {
           )}
           <Text className='rule-explanation'>
             {getRoundExample()}
+          </Text>
+        </View>
+      </View>
+
+      <View className='config-card debug-card'>
+        <View className='config-item'>
+          <View className='item-header'>
+            <Text className='label'>Debug: 强制团队状态</Text>
+            <Switch checked={hasTeam} onChange={handleToggleTeam} color='#4F46E5' />
+          </View>
+          <Text className='rule-explanation'>
+            {hasTeam ? '当前状态：有团队 (Dashboard显示详情)' : '当前状态：无团队 (Dashboard显示加入引导)'}
           </Text>
         </View>
       </View>

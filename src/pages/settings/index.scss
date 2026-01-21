@@ -19,12 +19,21 @@
 
 .config-card {
   background: $color-white;
-  border-radius: $radius-lg; // 32rpx
-  padding: $spacing-lg; // 32rpx
+  border-radius: 32rpx;
+  padding: $spacing-lg;
   box-shadow: $shadow-sm;
   display: flex;
   flex-direction: column;
-  gap: 0; // 内部间距由 item margin 控制
+  gap: $spacing-lg;
+
+  &.debug-card {
+    border: 2rpx dashed #F59E0B;
+    background: #FFFBEB;
+    
+    .label {
+      color: #B45309;
+    }
+  }
 }
 
 .config-item {
