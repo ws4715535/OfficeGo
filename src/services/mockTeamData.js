@@ -87,8 +87,8 @@ export const getMembersForDay = (teamId, dayIndex) => {
       ...m,
       status: 'OFFICE', // MVP: Force all status to OFFICE
       isOnline: true,
-      statusText: '已到岗', // MVP Request: "目前都显示到岗"
-      tagText: '正在办公' // MVP Request: "和正在办公"
+      statusText: '来了', // MVP Request: "已到岗" -> "来了"
+      tagText: 'Office' // MVP Request: "正在办公" -> "Office"
     }
   }).sort((a, b) => (a.status === 'OFFICE' ? -1 : 1)) // Put Office people first
 }
