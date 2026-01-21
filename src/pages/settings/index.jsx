@@ -188,6 +188,20 @@ export default function Settings() {
             {hasTeam ? '当前状态：有团队 (Dashboard显示详情)' : '当前状态：无团队 (Dashboard显示加入引导)'}
           </Text>
         </View>
+        <View className='divider' />
+        <View className='config-item'>
+          <Button 
+            className='reset-btn' 
+            type='warn' 
+            size='mini'
+            onClick={() => {
+              Taro.removeStorageSync('isOnboarded')
+              Taro.showToast({ title: '已重置Onboarding', icon: 'success' })
+            }}
+          >
+            重置 Onboarding 状态
+          </Button>
+        </View>
       </View>
 
       <Button className='save-btn' onClick={handleSave}>

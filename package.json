@@ -38,6 +38,7 @@
   "author": "",
   "dependencies": {
     "@babel/runtime": "^7.24.4",
+    "@cloudbase/wx-cloud-client-sdk": "^1.7.2",
     "@nutui/nutui-react-taro": "^3.0.19-cpp.24",
     "@tarojs/components": "4.1.9",
     "@tarojs/helper": "4.1.9",
