@@ -46,6 +46,11 @@
       justify-content: center;
       opacity: 0.6;
       
+      .nav-icon {
+        width: 32rpx;
+        height: 32rpx;
+      }
+
       &:active {
         opacity: 1;
       }
