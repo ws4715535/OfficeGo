@@ -30,6 +30,19 @@
       font-weight: 800; // Extra Bold
       color: $color-text-main;
     }
+
+    .login-btn-reset {
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      line-height: 1.2;
+      text-align: left;
+      
+      &::after {
+        border: none;
+      }
+    }
   }
 }
 
@@ -54,6 +67,27 @@
       color: $color-text-main;
       font-weight: $font-weight-bold;
       box-shadow: $shadow-sm;
+    }
+  }
+}
+
+.login-banner {
+  margin-bottom: $spacing-md;
+  
+  .login-btn-primary {
+    background: $color-primary;
+    color: #fff;
+    font-size: $font-sm;
+    font-weight: bold;
+    border-radius: $radius-md;
+    border: none;
+    
+    &::after {
+      border: none;
+    }
+    
+    &:active {
+      opacity: 0.9;
     }
   }
 }

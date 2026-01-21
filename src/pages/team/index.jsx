@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { TEAMS, getTeamData, getMembersForDay, joinTeam } from '../../services/mockTeamData'
 import EmptyState from './empty/index'
+import AuthService from '../../services/auth'
 import downIcon from '../../assets/down.png'
 import addIcon from '../../assets/add.png'
 import settingIcon from '../../assets/setting.png'
@@ -20,7 +21,12 @@ export default function Team() {
   const [inviteCode, setInviteCode] = useState('')
 
   // Check team status
-  useDidShow(() => {
+  useDidShow(async () => {
+    try {
+        await AuthService.login()
+    } catch (e) {
+        console.error('Auto login failed on Team page', e)
+    }
     refreshTeams()
   })
 

@@ -10,6 +10,7 @@ import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
 import { useDashboard } from '../../hooks/useDashboard'
 import { TEAMS, getMembersForDay } from '../../services/mockTeamData'
+import AuthService from '../../services/auth'
 import './index.scss'
 
 export default function Index() {
@@ -19,6 +20,15 @@ export default function Index() {
     officeMembers: [],
     totalOffice: 0
   })
+  const [userName, setUserName] = useState('来了么到岗助手!')
+
+  useEffect(() => {
+    // Check Onboarding
+    const isOnboarded = Taro.getStorageSync('isOnboarded')
+    if (!isOnboarded) {
+        Taro.reLaunch({ url: '/pages/onboarding/index' })
+    }
+  }, [])
 
   useDidShow(() => {
     // Check if user has any teams
@@ -63,12 +73,30 @@ export default function Index() {
       {/* 1. Navbar */}
       <View className='navbar'>
         <View className='brand'>
-          <Text className='app-name'>来了么到岗助手!</Text>
+          <Text className='app-name'>{userName}</Text>
         </View>
         <View className='settings-icon' onClick={navigateToSettings}>
           <Image src={settingIcon} style={{ width: '32rpx', height: '32rpx' }} />
         </View>
       </View>
+      
+      <Button onClick={async () => {
+         try {
+            const res = await Taro.cloud.callFunction({
+                name: 'getUserProfile'
+            })
+            console.log('Cloud getUserProfile result:', res.result)
+            Taro.showModal({
+                title: '云端用户信息',
+                content: `OpenID: ${res.result.openid}`,
+                showCancel: false
+            })
+         } catch (err) {
+            console.error('Cloud call failed:', err)
+         }
+       }}>
+         调用云函数获取信息
+       </Button>
 
       {/* 2. Team Banner (New) */}
       <View className='team-banner-container'>
