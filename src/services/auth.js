@@ -72,14 +72,44 @@ const AuthService = {
   },
 
   /**
-   * Get User Profile (Mock/Placeholder for now)
-   * Future: Integrate with onChooseAvatar
+   * Get User Profile
+   * 1. Try to read from local cache first
+   * 2. If not found, call cloud function 'getUserProfile'
    */
   getUserProfile: async () => {
-    // Placeholder logic
-    return {
-      nickName: 'User',
-      avatarUrl: ''
+    try {
+      // 1. Try local cache
+      const localUser = Taro.getStorageSync('userInfo')
+      if (localUser && localUser.nickName && localUser.avatarUrl) {
+        // Return a promise that resolves to local data to match async interface
+        return localUser
+      }
+
+      // 2. Call cloud function
+      const res = await Taro.cloud.callFunction({
+        name: 'getUserProfile'
+      })
+      
+      console.log('AuthService GetProfile Result:', res)
+      
+      if (res.result.code === 0 && res.result.data) {
+        const userData = res.result.data
+        
+        // Update local storage
+        Taro.setStorageSync('userInfo', {
+            nickName: userData.nickName,
+            avatarUrl: userData.avatarUrl,
+            settings: userData.settings
+        })
+        
+        return userData
+      }
+      
+      return null
+    } catch (error) {
+      console.error('AuthService GetProfile Error:', error)
+      // On error, return empty object or null to let caller handle it
+      return null
     }
   }
 }

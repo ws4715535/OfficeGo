@@ -15,8 +15,7 @@ export default function Calendar() {
 
   useEffect(() => {
     setDate(currentDate);
-    setTimeout(() => loadDays(), 0);
-  }, [currentDate, setDate, loadDays])
+  }, [currentDate, setDate])
 
   // Custom Header
   const handlePrevMonth = () => {
