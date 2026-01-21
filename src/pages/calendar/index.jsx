@@ -1,11 +1,12 @@
-import { View, Text } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import React, { useRef, useState, useEffect } from 'react'
-import { CalendarCard } from '@nutui/nutui-react-taro'
-import { ArrowLeft, ArrowRight } from '@nutui/icons-react-taro'
+import { CalendarCard, ConfigProvider } from '@nutui/nutui-react-taro'
 import dayjs from 'dayjs'
 import classNames from 'classnames'
 import { useCalendar } from '../../hooks/useCalendar'
 import { RECORD_TYPES } from '../../constants/config'
+import leftIcon from '../../assets/left.png'
+import rightIcon from '../../assets/right.png'
 import './index.scss'
 
 export default function Calendar() {
@@ -32,13 +33,13 @@ export default function Calendar() {
         <Text className='page-title'>记录</Text>
         <View className='month-switcher'>
           <View className='arrow-btn' onClick={handlePrevMonth}>
-            <ArrowLeft size={14} color='#666' />
+            <Image src={leftIcon} className='nav-icon' />
           </View>
           <Text className='current-month'>
             {dayjs(currentDate).format('YYYY年M月')}
           </Text>
           <View className='arrow-btn' onClick={handleNextMonth}>
-            <ArrowRight size={14} color='#666' />
+            <Image src={rightIcon} className='nav-icon' />
           </View>
         </View>
       </View>
@@ -65,22 +66,7 @@ export default function Calendar() {
       return <View className='day-cell other-month'><Text>{day.date}</Text></View>;
     }
 
-    return (
-      <View 
-        className={classNames('', {
-          'is-weekend': isWeekend,
-          'is-today': isToday,
-          'is-leave': isLeave,
-          'is-office': isOffice,
-        })}
-        onLongPress={(e) => {
-          e.stopPropagation();
-          toggleLeave(dateStr);
-        }}
-      >
-        <Text className='day-text'>{day.date}</Text>
-      </View>
-    );
+    return <View className='day-cell other-month'><Text>{day.date}</Text></View>
   }
 
   const handlePageChange = (val) => {
@@ -91,8 +77,6 @@ export default function Calendar() {
   return (
     <View className='calendar-page'>
       {renderHeader()}
-
-
         <CalendarCard
           ref={calendarRef}
           type="multiple"
@@ -101,6 +85,7 @@ export default function Calendar() {
           onPageChange={handlePageChange}
           renderDay={renderDay}
           firstDayOfWeek={0}
+          title={" "}
         />
 
       <View className='legend-container'>
