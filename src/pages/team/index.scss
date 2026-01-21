@@ -392,7 +392,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       
       .hash {
         font-size: 48rpx;
-        color: -primary;
+        color: $color-primary;
         font-weight: bold;
       }
     }
@@ -400,7 +400,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     .modal-title {
       font-size: 36rpx;
       font-weight: 800;
-      color: -text-main;
+      color: $color-text-main;
     }
   }
   
@@ -412,10 +412,10 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     padding: 0 32rpx;
     font-size: 32rpx;
     text-align: center;
-    color: -text-main;
+    color: $color-text-main;
     
     &:focus {
-      border-color: -primary;
+      border-color: $color-primary;
       background: #fff;
     }
   }
@@ -434,9 +434,9 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       
       &.confirm {
         height: 88rpx;
-        background: -primary;
+        background: $color-primary;
         color: #fff;
-        border-radius: -full;
+        border-radius: $radius-full;
         font-size: 32rpx;
         font-weight: bold;
         box-shadow: 0 8rpx 20rpx rgba(79, 70, 229, 0.25);
@@ -446,7 +446,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       
       &.cancel {
         font-size: 28rpx;
-        color: -text-sub;
+        color: $color-text-sub;
         padding: 16rpx;
         
         &:active { opacity: 0.7; }
