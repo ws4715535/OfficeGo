@@ -1,18 +1,138 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { getMonthDaysStatus, isWorkDay } from '../services/core';
-import { saveRecord, getRecord } from '../services/storage';
+import { saveRecord, getRecord, getAllRecords } from '../services/storage';
 import { RECORD_TYPES } from '../constants/config';
+import AttendanceService from '../services/attendance';
 import Taro from '@tarojs/taro';
 
 export const useCalendar = () => {
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [days, setDays] = useState([]);
+  
+  // Cloud Sync State
+  const pendingChanges = useRef({});
+  const debounceTimer = useRef(null);
 
-  // 允许外部传入 date 来更新内部 currentDate
+  // Flush changes to cloud
+  const flushChanges = useCallback(async () => {
+    const changes = pendingChanges.current;
+    if (Object.keys(changes).length === 0) return;
+    
+    // Clear pending changes immediately to avoid duplicates
+    pendingChanges.current = {};
+    
+    console.log('Flushing changes to cloud:', changes);
+    
+    // Show loading
+    Taro.showNavigationBarLoading();
+    
+    try {
+        const promises = Object.keys(changes).map(date => {
+            const status = changes[date];
+            if (status === null) {
+                return AttendanceService.deleteRecord(date).catch(err => {
+                    console.error(`Failed to delete record for ${date}:`, err);
+                });
+            } else {
+                return AttendanceService.upsertRecord({ date, status }).catch(err => {
+                    console.error(`Failed to upsert record for ${date}:`, err);
+                });
+            }
+        });
+        
+        await Promise.all(promises);
+    } finally {
+        // Hide loading
+        Taro.hideNavigationBarLoading();
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        flushChanges();
+      }
+    };
+  }, [flushChanges]);
+
+  // Unified update handler with debounce
+  const updateDateStatus = useCallback((dateStr, status) => {
+    // 1. Update Local Storage (Sync)
+    saveRecord(dateStr, status);
+    
+    // 2. Queue for Cloud Sync
+    pendingChanges.current[dateStr] = status;
+    
+    // 3. Debounce Cloud Call (2 seconds)
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(() => {
+      flushChanges();
+    }, 1000);
+  }, [flushChanges]);
+
   const setDate = useCallback((date) => {
     setCurrentDate(dayjs(date));
   }, []);
+
+  // Sync with Cloud
+  const syncWithCloud = useCallback(async () => {
+    const monthStr = currentDate.format('YYYY-MM');
+    console.log('Syncing with cloud for:', monthStr);
+    
+    // Show loading
+    Taro.showNavigationBarLoading();
+    
+    try {
+      const res = await AttendanceService.getMonthlyStats(monthStr);
+      if (res && res.records) {
+        const cloudMap = {};
+        res.records.forEach(r => { cloudMap[r.date] = r.status; });
+        console.log('Cloud records:', cloudMap);
+        const localRecords = getAllRecords();
+        const pending = pendingChanges.current;
+        
+        // 1. Update local from cloud (Upsert)
+        res.records.forEach(r => {
+            if (!pending.hasOwnProperty(r.date)) {
+                if (localRecords[r.date] !== r.status) {
+                    saveRecord(r.date, r.status);
+                }
+            }
+        });
+
+        // 2. Remove local records that are NOT in cloud (for this month)
+        Object.keys(localRecords).forEach(date => {
+            if (date.startsWith(monthStr)) { // Check if date belongs to current month
+                if (!pending.hasOwnProperty(date)) {
+                    if (!cloudMap[date]) {
+                        // Exists locally but not in cloud -> delete
+                        saveRecord(date, null);
+                    }
+                }
+            }
+        });
+
+        loadDays();
+      }
+    } catch (err) {
+      console.error('Sync failed:', err);
+    } finally {
+        // Hide loading
+        Taro.hideNavigationBarLoading();
+    }
+  }, [currentDate, loadDays]);
+
+  // Trigger sync on mount or month change
+  useEffect(() => {
+    loadDays(); // 1. Load local cache immediately
+    syncWithCloud(); // 2. Sync with cloud in background
+  }, [syncWithCloud, loadDays]);
 
   const loadDays = useCallback(() => {
     const year = currentDate.year();
@@ -33,7 +153,7 @@ export const useCalendar = () => {
     
     // 如果当前是请假，单击先清除请假状态
     if (record === RECORD_TYPES.LEAVE) {
-      saveRecord(dateStr, null);
+      updateDateStatus(dateStr, null);
       loadDays();
       return;
     }
@@ -46,7 +166,7 @@ export const useCalendar = () => {
 
     // 切换状态: 有 -> 无, 无 -> 有
     const newType = record === RECORD_TYPES.OFFICE ? null : RECORD_TYPES.OFFICE;
-    saveRecord(dateStr, newType);
+    updateDateStatus(dateStr, newType);
     
     // 重新加载数据
     loadDays();
@@ -55,7 +175,7 @@ export const useCalendar = () => {
     if (newType === RECORD_TYPES.OFFICE) {
       Taro.vibrateShort();
     }
-  }, [loadDays]);
+  }, [loadDays, updateDateStatus]);
 
   const toggleLeave = useCallback((dateStr) => {
     const record = getRecord(dateStr);
@@ -68,30 +188,17 @@ export const useCalendar = () => {
 
     // 切换状态: Leave -> None, Others -> Leave
     const newType = record === RECORD_TYPES.LEAVE ? null : RECORD_TYPES.LEAVE;
-    saveRecord(dateStr, newType);
+    updateDateStatus(dateStr, newType);
 
     // 重新加载数据
     loadDays();
 
     // 震动反馈
     Taro.vibrateShort();
-  }, [loadDays]);
+  }, [loadDays, updateDateStatus]);
 
   // 批量更新 (用于 CalendarCard 的 onChange)
   const handleBatchChange = useCallback((newDates) => {
-    // newDates 是当前选中的所有日期 (Date[])
-    // 我们需要对比 officeDates 和 newDates 来决定哪些被选中了，哪些被取消了
-    // 注意：CalendarCard 的 onChange 返回的是所有选中的日期
-    // 我们可以简单地遍历 days，如果 date 在 newDates 里且不是 Office -> 设为 Office
-    // 如果 date 不在 newDates 里且是 Office -> 设为 null
-    // 但是要注意 Leave 状态不要被误伤？
-    // 如果一个 Leave 日期被用户点击选中了，它会出现在 newDates 里（因为 CalendarCard 认为它被选中了）
-    // 这时候我们应该把它设为 OFFICE（覆盖 Leave）。
-    // 如果一个 Leave 日期没被点击，它不在 newDates 里（因为它本来就不是 Office，不在初始 value 里）。
-    // 所以逻辑是：
-    // 1. 遍历 newDates，把它们都设为 OFFICE (saveRecord)
-    // 2. 遍历 oldOfficeDates (即当前的 officeDates)，如果不在 newDates 里，设为 null
-    
     const newDateStrs = newDates.map(d => dayjs(d).format('YYYY-MM-DD'));
     
     // 1. 处理新增/保持的 Office
@@ -99,23 +206,21 @@ export const useCalendar = () => {
         const currentRecord = getRecord(dateStr);
         if (currentRecord !== RECORD_TYPES.OFFICE) {
              // 可能是 null 或 LEAVE，都覆盖为 OFFICE
-             // 这里加个校验：非工作日不能打卡？
              if (isWorkDay(dateStr)) {
-                 saveRecord(dateStr, RECORD_TYPES.OFFICE);
+                 updateDateStatus(dateStr, RECORD_TYPES.OFFICE);
              }
         }
     });
 
     // 2. 处理被取消的 Office
-    // 我们可以利用 days 数据，因为它包含了当前月所有的状态
     days.forEach(day => {
         if (day.status === RECORD_TYPES.OFFICE && !newDateStrs.includes(day.date)) {
-            saveRecord(day.date, null);
+            updateDateStatus(day.date, null);
         }
     });
 
     loadDays();
-  }, [days, loadDays]);
+  }, [days, loadDays, updateDateStatus]);
 
   const prevMonth = () => {
     setCurrentDate(d => d.subtract(1, 'month'));

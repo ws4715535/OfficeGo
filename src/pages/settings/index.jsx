@@ -19,6 +19,7 @@ export default function Settings() {
   const [hasTeam, setHasTeam] = useState(false)
 
   useEffect(() => {
+    // 1. Load Local Settings First
     const saved = getSettings()
     if (saved) {
       if (saved.targetRatio) setTargetRatio(Math.round(saved.targetRatio * 100))
@@ -26,12 +27,46 @@ export default function Settings() {
       if (saved.frequency) setFrequency(saved.frequency)
     }
     
-    // Load User Info
+    // 2. Load Local User Info
     const localUser = Taro.getStorageSync('userInfo')
     if (localUser) {
         setAvatarUrl(localUser.avatarUrl || '')
         setNickName(localUser.nickName || '')
     }
+    
+    // 3. Sync from Cloud
+    const syncProfile = async () => {
+      try {
+        const userProfile = await AuthService.getUserProfile()
+        if (userProfile) {
+           // Update User Info
+           // Only update state if cloud data exists, otherwise keep local (or empty)
+           if (userProfile.avatarUrl) setAvatarUrl(userProfile.avatarUrl)
+           if (userProfile.nickName) setNickName(userProfile.nickName)
+           
+           // Fetch latest localUser again because it might have changed
+           const currentLocal = Taro.getStorageSync('userInfo') || {}
+           
+           Taro.setStorageSync('userInfo', {
+               ...currentLocal,
+               nickName: userProfile.nickName || currentLocal.nickName || '',
+               avatarUrl: userProfile.avatarUrl || currentLocal.avatarUrl || ''
+           })
+
+           // Update Settings
+           if (userProfile.settings) {
+               const { targetRatio, roundType, frequency } = userProfile.settings
+               if (targetRatio) setTargetRatio(Math.round(targetRatio * 100))
+               if (roundType) setRoundType(roundType)
+               if (frequency) setFrequency(frequency)
+               saveSettings(userProfile.settings)
+           }
+        }
+      } catch (err) {
+        console.error('Failed to sync profile', err)
+      }
+    }
+    syncProfile()
     
     // Check Team Status
     setHasTeam(TEAMS.length > 0)
@@ -306,13 +341,10 @@ export default function Settings() {
         onClick={() => {
             Taro.showModal({
                 title: '退出登录',
-                content: '确定要退出登录并清除本地数据吗？',
+                content: '确定要退出登录吗？',
                 success: async (res) => {
                     if (res.confirm) {
-                        // Clear Local Storage
-                        Taro.clearStorageSync()
-                        
-                        // Redirect to Onboarding
+                        // Redirect to Onboarding without clearing storage
                         Taro.reLaunch({ url: '/pages/onboarding/index' })
                     }
                 }
