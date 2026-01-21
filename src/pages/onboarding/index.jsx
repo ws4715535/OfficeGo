@@ -1,5 +1,5 @@
-import { View, Text, Button, Image, Slider, ScrollView } from '@tarojs/components'
-import React, { useState } from 'react'
+import { View, Text, Button, Image, Slider, ScrollView, Input } from '@tarojs/components'
+import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import AuthService from '../../services/auth'
 import logoIcon from '../../assets/logo.png'
@@ -7,16 +7,58 @@ import { PRIVACY_POLICY } from '../../constants/privacy'
 import './index.scss'
 
 export default function Onboarding() {
-  const [step, setStep] = useState(0) // 0: Landing, 1: Goal, 2: Habits
+  const [step, setStep] = useState(0) // 0: Landing, 1: Profile, 2: Goal, 3: Habits
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [showFullPrivacy, setShowFullPrivacy] = useState(false)
   
-  // Step 1 Data: Goal
-  const [targetPercentage, setTargetPercentage] = useState(40)
+  // Step 1 Data: Profile
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [nickName, setNickName] = useState('')
+
+  // Step 2 Data: Goal
+  const [targetPercentage, setTargetPercentage] = useState(0) // Start at 0 for animation
+  const [animatedPercentage, setAnimatedPercentage] = useState(0)
   
-  // Step 2 Data: Habits
+  // Step 3 Data: Habits
   const [cycle, setCycle] = useState('monthly') // 'weekly' | 'monthly'
   const [rounding, setRounding] = useState('ceil') // 'ceil' | 'round' | 'floor'
+
+  // Animation Effect for Step 2
+  useEffect(() => {
+    if (step === 2) {
+      // Reset
+      setTargetPercentage(0) 
+      setAnimatedPercentage(0)
+
+      // Start animation
+      setTimeout(() => {
+        setTargetPercentage(40)
+        
+        // Custom number animation
+        let start = 0
+        const end = 40
+        const duration = 1000
+        const stepTime = 20
+        const steps = duration / stepTime
+        const increment = end / steps
+        
+        const timer = setInterval(() => {
+            start += increment
+            if (start >= end) {
+                start = end
+                clearInterval(timer)
+            }
+            setAnimatedPercentage(Math.floor(start))
+        }, stepTime)
+      }, 100)
+    }
+  }, [step])
+
+  // Sync slider changes to animated value manually after initial animation
+  const handleSliderChange = (e) => {
+      setTargetPercentage(e.detail.value)
+      setAnimatedPercentage(e.detail.value)
+  }
 
   // Step 0: Landing Actions
   const handleStartClick = () => {
@@ -25,47 +67,107 @@ export default function Onboarding() {
 
   // Privacy Actions
   const handlePrivacyAuth = async () => {
+    Taro.showLoading({ title: '登录中...' })
     try {
-      // 1. Get User Profile (WeChat Auth)
-      const profileRes = await Taro.getUserProfile({
-        desc: '用于完善账号资料与展示头像昵称'
-      })
-      const userInfo = profileRes.userInfo
+      // Login/Register in Cloud
+      const loginRes = await AuthService.login()
       
-      // 2. Login/Register in Cloud
-      await AuthService.login(userInfo)
+      // Check if user is already onboarded
+      if (loginRes && loginRes.data && loginRes.data.isOnboarded) {
+          // If already onboarded, sync local storage and go home directly
+          Taro.setStorageSync('userInfo', loginRes.data)
+          Taro.setStorageSync('isOnboarded', true)
+          if (loginRes.data.settings) {
+              Taro.setStorageSync('userSettings', loginRes.data.settings)
+          }
+          
+          Taro.showToast({ title: '欢迎回来', icon: 'success' })
+          setTimeout(() => {
+            Taro.switchTab({ url: '/pages/index/index' })
+          }, 1000)
+          return
+      }
       
-      // 3. Save to Local
-      Taro.setStorageSync('userInfo', userInfo)
-      
-      // 4. Move to Next Step
+      // Move to Next Step (Profile Setup)
       setShowPrivacy(false)
-      setStep(1) // Go to Goal Setting
+      setStep(1) 
       
     } catch (err) {
       console.error('Auth failed', err)
-      Taro.showToast({ title: '需要授权才能继续', icon: 'none' })
+      Taro.showToast({ title: '登录失败，请重试', icon: 'none' })
+    } finally {
+      Taro.hideLoading()
     }
   }
 
-  // Step 1: Goal Actions
-  const handleGoalNext = () => {
+  // Step 1: Profile Actions
+  const onChooseAvatar = (e) => {
+    const { avatarUrl } = e.detail
+    setAvatarUrl(avatarUrl)
+  }
+
+  const handleProfileNext = () => {
+    if (!nickName) {
+      Taro.showToast({ title: '请输入昵称', icon: 'none' })
+      return
+    }
+    if (!avatarUrl) {
+      Taro.showToast({ title: '请设置头像', icon: 'none' })
+      return
+    }
+    // Save to local storage for now
+    Taro.setStorageSync('tempUserProfile', { nickName, avatarUrl })
     setStep(2)
   }
 
-  // Step 2: Habits Actions
-  const handleComplete = () => {
-    // Save Settings
-    const settings = {
-      targetPercentage,
-      statsCycle: cycle,
-      roundingRule: rounding
+  // Step 2: Goal Actions
+  const handleGoalNext = () => {
+    setStep(3)
+  }
+
+  // Step 3: Habits Actions
+  const handleComplete = async () => {
+    Taro.showLoading({ title: '保存中...' })
+    try {
+        let finalAvatarUrl = avatarUrl
+
+        // Upload Avatar if it's a temporary path
+        if (avatarUrl && avatarUrl.startsWith('http://tmp') || avatarUrl.startsWith('wxfile://')) {
+            const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(-6)}.png`
+            const uploadRes = await Taro.cloud.uploadFile({
+                cloudPath,
+                filePath: avatarUrl
+            })
+            finalAvatarUrl = uploadRes.fileID
+        }
+
+        // Save Settings
+        const settings = {
+            targetPercentage,
+            statsCycle: cycle,
+            roundingRule: rounding
+        }
+        
+        // Update User in Cloud
+        await AuthService.updateUser({
+            nickName,
+            avatarUrl: finalAvatarUrl,
+            settings,
+            isOnboarded: true
+        })
+        
+        // Save Local
+        Taro.setStorageSync('userSettings', settings)
+        Taro.setStorageSync('isOnboarded', true)
+        
+        // Navigate Home
+        Taro.switchTab({ url: '/pages/index/index' })
+    } catch (err) {
+        console.error('Complete failed', err)
+        Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+    } finally {
+        Taro.hideLoading()
     }
-    Taro.setStorageSync('userSettings', settings)
-    Taro.setStorageSync('isOnboarded', true)
-    
-    // Navigate Home
-    Taro.switchTab({ url: '/pages/index/index' })
   }
 
   // Render Helpers
@@ -121,21 +223,68 @@ export default function Onboarding() {
     </View>
   )
 
+  const renderProfile = () => (
+    <View className='step-content'>
+      <View className='step-header'>
+        <View className='progress-bar'>
+          <View className='progress-fill' style={{ width: '33%' }}></View>
+        </View>
+        <Text className='step-indicator'>STEP 1 / 3</Text>
+      </View>
+      
+      <Text className='title'>完善资料</Text>
+      <Text className='subtitle'>设置你的头像和昵称，方便团队成员识别。</Text>
+      
+      <View className='profile-section'>
+        <Button 
+          className='avatar-wrapper' 
+          openType='chooseAvatar' 
+          onChooseAvatar={onChooseAvatar}
+        >
+          {avatarUrl ? (
+            <Image className='avatar-img' src={avatarUrl} mode='aspectFill' />
+          ) : (
+            <View className='avatar-placeholder'>
+              <Image src={logoIcon} className='default-icon' />
+              <Text className='tip'>点击设置头像</Text>
+            </View>
+          )}
+        </Button>
+        
+        <View className='input-wrapper'>
+          <Text className='input-label'>昵称</Text>
+          <Input 
+            type='nickname' 
+            className='nickname-input' 
+            placeholder='请输入昵称' 
+            value={nickName}
+            onBlur={(e) => setNickName(e.detail.value)}
+            onChange={(e) => setNickName(e.detail.value)} 
+          />
+        </View>
+      </View>
+      
+      <View className='bottom-area'>
+        <Button className='action-btn' onClick={handleProfileNext}>下一步 →</Button>
+      </View>
+    </View>
+  )
+
   const renderGoal = () => (
     <View className='step-content'>
       <View className='step-header'>
         <View className='progress-bar'>
-          <View className='progress-fill' style={{ width: '50%' }}></View>
+          <View className='progress-fill' style={{ width: '66%' }}></View>
         </View>
-        <Text className='step-indicator'>STEP 1 / 2</Text>
+        <Text className='step-indicator'>STEP 2 / 3</Text>
       </View>
       
       <Text className='title'>设定在岗目标</Text>
       <Text className='subtitle'>每个月你需要待多久？我们将根据此目标为你规划进度。</Text>
       
       <View className='card'>
-        <Text className='highlight'>{targetPercentage}%</Text>
-        <Text className='highlight-sub'>平均每月需在岗约 {Math.ceil(22 * (targetPercentage/100))} 天</Text>
+        <Text className='highlight'>{animatedPercentage}%</Text>
+        <Text className='highlight-sub'>平均每月需在岗约 {Math.ceil(22 * (animatedPercentage/100))} 天</Text>
         
         <Slider 
           value={targetPercentage} 
@@ -146,8 +295,8 @@ export default function Onboarding() {
           backgroundColor='#E5E7EB'
           blockColor='#4F46E5'
           blockSize={24}
-          onChanging={e => setTargetPercentage(e.detail.value)}
-          onChange={e => setTargetPercentage(e.detail.value)}
+          onChanging={handleSliderChange}
+          onChange={handleSliderChange}
           className='custom-slider'
         />
       </View>
@@ -164,7 +313,7 @@ export default function Onboarding() {
         <View className='progress-bar'>
           <View className='progress-fill' style={{ width: '100%' }}></View>
         </View>
-        <Text className='step-indicator'>STEP 2 / 2</Text>
+        <Text className='step-indicator'>STEP 3 / 3</Text>
       </View>
       
       <Text className='title'>统计习惯</Text>
@@ -224,8 +373,9 @@ export default function Onboarding() {
   return (
     <View className='onboarding-page'>
       {step === 0 && renderLanding()}
-      {step === 1 && renderGoal()}
-      {step === 2 && renderHabits()}
+      {step === 1 && renderProfile()}
+      {step === 2 && renderGoal()}
+      {step === 3 && renderHabits()}
 
       {/* Privacy Modal */}
       {showPrivacy && (

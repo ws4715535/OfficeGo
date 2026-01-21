@@ -1,7 +1,8 @@
-import { View, Text, Slider, Button, Switch } from '@tarojs/components'
+import { View, Text, Slider, Button, Switch, Image, Input } from '@tarojs/components'
 import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { getSettings, saveSettings } from '../../services/storage'
+import AuthService from '../../services/auth'
 import { TEAMS, joinTeam, leaveTeam } from '../../services/mockTeamData'
 import './index.scss'
 
@@ -10,6 +11,10 @@ export default function Settings() {
   const [targetRatio, setTargetRatio] = useState(40)
   const [roundType, setRoundType] = useState('ceil') // ceil, round, floor
   
+  // User Profile State
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [nickName, setNickName] = useState('')
+
   // Debug State
   const [hasTeam, setHasTeam] = useState(false)
 
@@ -21,9 +26,21 @@ export default function Settings() {
       if (saved.frequency) setFrequency(saved.frequency)
     }
     
+    // Load User Info
+    const localUser = Taro.getStorageSync('userInfo')
+    if (localUser) {
+        setAvatarUrl(localUser.avatarUrl || '')
+        setNickName(localUser.nickName || '')
+    }
+    
     // Check Team Status
     setHasTeam(TEAMS.length > 0)
   }, [])
+
+  const onChooseAvatar = (e) => {
+    const { avatarUrl } = e.detail
+    setAvatarUrl(avatarUrl)
+  }
 
   const handleToggleTeam = (e) => {
     const shouldHaveTeam = e.detail.value
@@ -45,23 +62,52 @@ export default function Settings() {
     }
   }
 
-  const handleSave = () => {
-    const newSettings = {
-      targetRatio: targetRatio / 100,
-      roundType,
-      frequency
+  const handleSave = async () => {
+    Taro.showLoading({ title: '保存中...' })
+    try {
+        let finalAvatarUrl = avatarUrl
+
+        // Upload Avatar if it's a temporary path
+        if (avatarUrl && (avatarUrl.startsWith('http://tmp') || avatarUrl.startsWith('wxfile://'))) {
+            const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(-6)}.png`
+            const uploadRes = await Taro.cloud.uploadFile({
+                cloudPath,
+                filePath: avatarUrl
+            })
+            finalAvatarUrl = uploadRes.fileID
+        }
+
+        const newSettings = {
+          targetRatio: targetRatio / 100,
+          roundType,
+          frequency
+        }
+        
+        // Save Settings Locally
+        saveSettings(newSettings)
+        
+        // Update Cloud User Info
+        await AuthService.updateUser({
+            nickName,
+            avatarUrl: finalAvatarUrl,
+            settings: newSettings
+        })
+
+        Taro.showToast({
+          title: '保存成功',
+          icon: 'success',
+          duration: 1500
+        })
+        
+        setTimeout(() => {
+          Taro.navigateBack()
+        }, 1500)
+    } catch (err) {
+        console.error('Save settings failed', err)
+        Taro.showToast({ title: '保存失败', icon: 'none' })
+    } finally {
+        Taro.hideLoading()
     }
-    saveSettings(newSettings)
-    
-    Taro.showToast({
-      title: '保存成功',
-      icon: 'success',
-      duration: 1500
-    })
-    
-    setTimeout(() => {
-      Taro.navigateBack()
-    }, 1500)
   }
 
   const handleFrequencyChange = (val) => {
@@ -112,8 +158,37 @@ export default function Settings() {
 
   return (
     <View className='settings-page'>
-      <Text className='page-title'>核心规则设置</Text>
+      {/* 0. 个人信息设置 */}
+      <Text className='section-title'>核心规则</Text>
+      <View className='config-card'>
+        <View className='config-item profile-config'>
+            <Button 
+                className='avatar-btn' 
+                openType='chooseAvatar' 
+                onChooseAvatar={onChooseAvatar}
+            >
+                {avatarUrl ? (
+                    <Image className='avatar-img' src={avatarUrl} mode='aspectFill' />
+                ) : (
+                    <View className='avatar-placeholder'>
+                        <Text>头像</Text>
+                    </View>
+                )}
+            </Button>
+            <View className='input-wrapper'>
+                <Input 
+                    type='nickname' 
+                    className='nickname-input' 
+                    placeholder='请输入昵称' 
+                    value={nickName}
+                    onBlur={(e) => setNickName(e.detail.value)}
+                    onChange={(e) => setNickName(e.detail.value)} 
+                />
+            </View>
+        </View>
+      </View>
       
+      <Text className='section-title'>核心规则</Text>
       <View className='config-card'>
         {/* 1. 默认统计粒度 */}
         <View className='config-item'>
@@ -195,17 +270,56 @@ export default function Settings() {
             type='warn' 
             size='mini'
             onClick={() => {
-              Taro.removeStorageSync('isOnboarded')
-              Taro.showToast({ title: '已重置Onboarding', icon: 'success' })
+              Taro.showModal({
+                title: '重置为新用户',
+                content: '这将删除云端所有数据并清除本地缓存，下次进入将视为新用户。确定吗？',
+                success: async (res) => {
+                  if (res.confirm) {
+                    Taro.showLoading({ title: '重置中...' })
+                    try {
+                      await AuthService.deleteUser()
+                      Taro.hideLoading()
+                      Taro.showToast({ title: '重置成功', icon: 'success' })
+                      setTimeout(() => {
+                        Taro.reLaunch({ url: '/pages/onboarding/index' })
+                      }, 1500)
+                    } catch (err) {
+                      Taro.hideLoading()
+                      Taro.showToast({ title: '重置失败', icon: 'none' })
+                    }
+                  }
+                }
+              })
             }}
           >
-            重置 Onboarding 状态
+            设置为新用户 (Debug)
           </Button>
         </View>
       </View>
 
       <Button className='save-btn' onClick={handleSave}>
         保存并返回
+      </Button>
+
+      <Button 
+        className='logout-btn' 
+        onClick={() => {
+            Taro.showModal({
+                title: '退出登录',
+                content: '确定要退出登录并清除本地数据吗？',
+                success: async (res) => {
+                    if (res.confirm) {
+                        // Clear Local Storage
+                        Taro.clearStorageSync()
+                        
+                        // Redirect to Onboarding
+                        Taro.reLaunch({ url: '/pages/onboarding/index' })
+                    }
+                }
+            })
+        }}
+      >
+        退出登录
       </Button>
     </View>
   )

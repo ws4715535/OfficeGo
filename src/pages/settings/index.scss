@@ -2,79 +2,104 @@
 
 .settings-page {
   min-height: 100vh;
+  background-color: #F9FAFB;
   padding: $spacing-lg;
-  background-color: #F9FAFB; // 显式浅灰背景，覆盖全局白底
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-}
+  padding-bottom: 120rpx;
+  
+  .page-title {
+    font-size: 40rpx;
+    font-weight: 900;
+    color: $color-text-main;
+    margin-bottom: 40rpx;
+    display: block;
+  }
 
-.page-title {
-  font-size: 32rpx;
-  font-weight: $font-weight-bold;
-  color: $color-text-main;
-  margin-bottom: $spacing-md;
-  display: block;
-}
-
-.config-card {
-  background: $color-white;
-  border-radius: 32rpx;
-  padding: $spacing-lg;
-  box-shadow: $shadow-sm;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-lg;
-
-  &.debug-card {
-    border: 2rpx dashed #F59E0B;
-    background: #FFFBEB;
+  .section-title {
+      font-size: 28rpx;
+      color: $color-text-sub;
+      margin-bottom: 16rpx;
+      margin-top: 32rpx;
+      display: block;
+      font-weight: bold;
+  }
+  
+  .config-card {
+    background: #fff;
+    border-radius: 24rpx;
+    padding: 0 32rpx;
+    margin-bottom: 32rpx;
+    box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.02);
     
-    .label {
-      color: #B45309;
-    }
-  }
-}
+    .config-item {
+      padding: 32rpx 0;
+      display: flex;
+      flex-direction: column;
 
-.config-item {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-md 0;
+      &.profile-config {
+          flex-direction: row; // Reset to row for profile
+          display: flex;
+          align-items: center;
 
-  &:first-child {
-    padding-top: 0;
-  }
-  &:last-child {
-    padding-bottom: 0;
-  }
-}
+          .avatar-btn {
+              width: 100rpx;
+              height: 100rpx;
+              border-radius: 50%;
+              padding: 0;
+              margin: 0 24rpx 0 0;
+              background: #F3F4F6;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              overflow: hidden;
 
-.divider {
-  height: 1px;
-  background-color: $color-border;
-  width: 100%;
-  margin: $spacing-xs 0;
-}
+              &::after { border: none; }
 
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+              .avatar-img {
+                  width: 100%;
+                  height: 100%;
+              }
 
-  .label {
-    font-size: $font-base; // 中等字号
-    color: $color-text-main; // 深灰
-    font-weight: $font-weight-medium;
-  }
+              .avatar-placeholder {
+                  font-size: 20rpx;
+                  color: #999;
+              }
+          }
 
-  .value-display {
-    font-size: $font-base;
-    color: $color-primary; // Indigo
-    font-weight: $font-weight-bold;
+          .input-wrapper {
+              flex: 1;
 
-    &.highlight {
-      font-size: 40rpx; // 特大字号
+              .nickname-input {
+                  width: 100%;
+                  height: 80rpx;
+                  font-size: 32rpx;
+                  color: $color-text-main;
+                  border-bottom: 2rpx solid #F3F4F6;
+              }
+          }
+      }
+      
+      .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .label {
+          font-size: $font-base; // 中等字号
+          color: $color-text-main; // 深灰
+          font-weight: $font-weight-medium;
+        }
+
+        .value-display {
+          font-size: $font-base;
+          color: $color-primary; // Indigo
+          font-weight: $font-weight-bold;
+
+          &.highlight {
+            font-size: 40rpx; // 特大字号
+          }
+        }
+      }
     }
   }
 }
@@ -84,6 +109,7 @@
   display: flex;
   background: transparent;
   gap: $spacing-sm;
+  margin-top: 24rpx;
 }
 
 .segment-item {
@@ -143,8 +169,9 @@
 
 /* Slider Container */
 .slider-container {
-  padding: 0;
   margin-top: -$spacing-xs; // 稍微抵消原生 Slider 的上下留白
+  margin-left: -20rpx; // Widen slider
+  margin-right: -20rpx;
 }
 
 /* Save Button */
@@ -162,4 +189,23 @@
   &:active {
     background: $color-primary-dark;
   }
+}
+
+/* Logout Button */
+.logout-btn {
+  margin-top: 32rpx;
+  background: #FEE2E2; // Red-100
+  color: #DC2626; // Red-600
+  font-weight: $font-weight-bold;
+  font-size: $font-md;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: $radius-lg;
+  width: 100%;
+  
+  &:active {
+    background: #FECACA; // Red-200
+  }
+
+  &::after { border: none; }
 }

@@ -20,17 +20,25 @@ export default function Index() {
     officeMembers: [],
     totalOffice: 0
   })
-  const [userName, setUserName] = useState('来了么到岗助手!')
+  const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
 
-  useEffect(() => {
+  useDidShow(() => {
     // Check Onboarding
     const isOnboarded = Taro.getStorageSync('isOnboarded')
     if (!isOnboarded) {
         Taro.reLaunch({ url: '/pages/onboarding/index' })
+        return
     }
-  }, [])
 
-  useDidShow(() => {
+    // Load User Info
+    const localUser = Taro.getStorageSync('userInfo')
+    if (localUser) {
+        setUserInfo({
+            nickName: localUser.nickName || 'User',
+            avatarUrl: localUser.avatarUrl || ''
+        })
+    }
+
     // Check if user has any teams
     const hasTeam = TEAMS.length > 0
     
@@ -59,13 +67,7 @@ export default function Index() {
   }
 
   const handleBannerClick = () => {
-    if (teamState.hasTeam) {
-      // Go to Team Tab
-      Taro.switchTab({ url: '/pages/team/index' })
-    } else {
-      // Join Team Action (Mock)
-      Taro.showToast({ title: '邀请功能开发中', icon: 'none' })
-    }
+    Taro.switchTab({ url: '/pages/team/index' })
   }
 
   return (
@@ -73,30 +75,13 @@ export default function Index() {
       {/* 1. Navbar */}
       <View className='navbar'>
         <View className='brand'>
-          <Text className='app-name'>{userName}</Text>
+          {userInfo.avatarUrl && <Image src={userInfo.avatarUrl} className='user-avatar-small' mode='aspectFill' />}
+          <Text className='app-name'>Hi, {userInfo.nickName}</Text>
         </View>
         <View className='settings-icon' onClick={navigateToSettings}>
           <Image src={settingIcon} style={{ width: '32rpx', height: '32rpx' }} />
         </View>
       </View>
-      
-      <Button onClick={async () => {
-         try {
-            const res = await Taro.cloud.callFunction({
-                name: 'getUserProfile'
-            })
-            console.log('Cloud getUserProfile result:', res.result)
-            Taro.showModal({
-                title: '云端用户信息',
-                content: `OpenID: ${res.result.openid}`,
-                showCancel: false
-            })
-         } catch (err) {
-            console.error('Cloud call failed:', err)
-         }
-       }}>
-         调用云函数获取信息
-       </Button>
 
       {/* 2. Team Banner (New) */}
       <View className='team-banner-container'>
