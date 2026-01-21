@@ -1,0 +1,249 @@
+@import "../../../styles/variables.scss";
+
+.settings-page {
+  min-height: 100vh;
+  padding: $spacing-lg;
+  background-color: #F9FAFB; // Light gray background
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+  padding-bottom: 100rpx;
+}
+
+.card {
+  background: $color-white;
+  border-radius: 40rpx;
+  padding: 40rpx;
+  box-shadow: $shadow-sm;
+}
+
+/* 1. Info Card */
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+
+  .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .label {
+      font-size: $font-sm;
+      color: $color-text-sub;
+    }
+
+    .edit-icon {
+      font-size: $font-lg;
+      color: $color-primary;
+      padding: 10rpx;
+    }
+  }
+
+  .team-name {
+    font-size: 48rpx;
+    font-weight: 800;
+    color: $color-text-main;
+  }
+
+  .team-meta {
+    font-size: $font-sm;
+    color: $color-text-sub;
+  }
+
+  .role-tag {
+    align-self: flex-start;
+    background: $color-primary-light;
+    color: $color-primary;
+    padding: 8rpx 24rpx;
+    border-radius: $radius-full;
+    font-size: $font-xs;
+    font-weight: $font-weight-bold;
+    margin-top: $spacing-xs;
+  }
+}
+
+/* 2. Invite Card */
+.invite-card {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  color: $color-white-fixed;
+  position: relative;
+  overflow: hidden;
+
+  .invite-title {
+    font-size: $font-sm;
+    opacity: 0.9;
+    margin-bottom: $spacing-md;
+    display: block;
+  }
+
+  .code-container {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 2rpx solid rgba(255, 255, 255, 0.2);
+
+    .code-label {
+      font-size: $font-xs;
+      opacity: 0.8;
+      position: absolute;
+      top: 100rpx; // Hacky positioning to match layout
+      display: none; // Hide for now to keep simple
+    }
+
+    .code-text {
+      font-size: 48rpx;
+      font-weight: 800;
+      font-family: monospace;
+      letter-spacing: 2rpx;
+    }
+
+    .copy-btn {
+      width: 80rpx;
+      height: 80rpx;
+      background: $color-white-fixed;
+      border-radius: $radius-md;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      
+      .icon {
+        font-size: 32rpx;
+        color: $color-primary;
+      }
+    }
+  }
+
+  .invite-desc {
+    font-size: $font-xs;
+    opacity: 0.8;
+    margin-top: $spacing-md;
+    display: block;
+    text-align: center;
+  }
+}
+
+/* 3. Member List */
+.section-title {
+  font-size: $font-lg;
+  font-weight: 800;
+  color: $color-text-main;
+  margin-top: $spacing-sm;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.member-item {
+  background: $color-white;
+  border-radius: 32rpx;
+  padding: $spacing-md;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: $shadow-sm;
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+
+    .avatar {
+      width: 88rpx;
+      height: 88rpx;
+      border-radius: 50%;
+      background: #F3F4F6;
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      gap: 4rpx;
+
+      .name-row {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+
+        .name {
+          font-size: $font-md;
+          font-weight: $font-weight-bold;
+          color: $color-text-main;
+        }
+
+        .admin-badge {
+          font-size: 18rpx;
+          color: #F59E0B; // Amber
+          background: #FFFBEB;
+          padding: 4rpx 8rpx;
+          border-radius: 8rpx;
+        }
+      }
+
+      .role-text {
+        font-size: $font-sm;
+        color: $color-text-sub;
+      }
+    }
+  }
+
+  .action-btn {
+    padding: $spacing-sm;
+    opacity: 0.6;
+    
+    .icon {
+      width: 40rpx;
+      height: 40rpx;
+    }
+
+    &:active { opacity: 1; }
+  }
+}
+
+/* 4. Danger Zone */
+.danger-zone-placeholder {
+  height: 180rpx; // Space for fixed footer
+}
+
+.danger-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-white;
+  padding: $spacing-lg $spacing-xl calc(env(safe-area-inset-bottom) + $spacing-lg);
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.05);
+  z-index: 100;
+
+  .danger-btn {
+    background: #FEF2F2; // Red-50
+    color: #DC2626; // Red-600
+    border-radius: $radius-full;
+    height: 96rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-md;
+    font-weight: $font-weight-bold;
+    border: none; // Match design specs
+    
+    .icon {
+      margin-right: 12rpx;
+      font-weight: normal;
+    }
+
+    &:active {
+      background: #FEE2E2;
+    }
+
+    &::after { border: none; }
+  }
+}

@@ -1,6 +1,8 @@
 export default defineAppConfig({
   pages: [
     'pages/index/index',
+    'pages/team/index',
+    'pages/team/settings/index',
     'pages/calendar/index',
     'pages/settings/index'
   ],
@@ -22,6 +24,12 @@ export default defineAppConfig({
         selectedIconPath: 'assets/tabbar/home-active.png',
       },
       {
+        pagePath: 'pages/team/index',
+        text: '团队',
+        iconPath: 'assets/tabbar/team.png',
+        selectedIconPath: 'assets/tabbar/team-active.png',
+      },
+      {
         pagePath: 'pages/calendar/index',
         text: '日历',
         iconPath: 'assets/tabbar/calendar.png',
@@ -29,5 +37,6 @@ export default defineAppConfig({
       }
     ]
   },
+  darkmode: false,  
   lazyCodeLoading: 'requiredComponents'
 })
