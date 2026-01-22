@@ -1,11 +1,54 @@
 import dayjs from 'dayjs';
-import { HOLIDAYS_2025, WORKDAYS_ADJUSTED_2025 } from '../constants/holidays';
+import Taro from '@tarojs/taro';
 import { RECORD_TYPES } from '../constants/config';
 import { getAllRecords } from './storage';
 
-// 判断是否为法定节假日
+// Safe require for local fallback
+let defaultHolidayData = null;
+try {
+  defaultHolidayData = require('../constants/holidayData.json');
+} catch (e) {
+  console.warn('Local holiday data not found');
+}
+
+// 获取当前有效的假期数据 (缓存 > 本地兜底)
+const getHolidayData = () => {
+  const cached = Taro.getStorageSync('HOLIDAY_DATA');
+  if (cached) return cached;
+  return defaultHolidayData;
+};
+
+// 辅助：从假期数据中解析某天的状态
+const getDayInfo = (dateStr) => {
+  const data = getHolidayData();
+  if (!data || !data.Years) return { isHoliday: false, isCompWork: false, name: '' };
+
+  const year = dayjs(dateStr).year();
+  const holidays = data.Years[year] || [];
+
+  for (const h of holidays) {
+    // 1. 检查是否在放假范围内
+    const start = dayjs(h.StartDate);
+    const end = dayjs(h.EndDate);
+    const curr = dayjs(dateStr);
+    
+    if ((curr.isAfter(start) || curr.isSame(start)) && (curr.isBefore(end) || curr.isSame(end))) {
+      return { isHoliday: true, isCompWork: false, name: h.Name };
+    }
+
+    // 2. 检查是否为补班
+    if (h.CompDays && h.CompDays.includes(dateStr)) {
+      return { isHoliday: false, isCompWork: true, name: '补班' };
+    }
+  }
+
+  return { isHoliday: false, isCompWork: false, name: '' };
+};
+
+// 判断是否为法定节假日 (纯休息)
 export const isHoliday = (dateStr) => {
-  return !!HOLIDAYS_2025[dateStr];
+  const info = getDayInfo(dateStr);
+  return info.isHoliday;
 };
 
 // 判断是否为周末
@@ -17,11 +60,13 @@ export const isWeekend = (dateStr) => {
 // 判断是否为需要上班的日子 (工作日)
 // 规则: (平时周一至周五 + 补班) - 法定节假日
 export const isWorkDay = (dateStr) => {
+  const info = getDayInfo(dateStr);
+
   // 1. 如果是法定节假日，肯定不是工作日
-  if (isHoliday(dateStr)) return false;
+  if (info.isHoliday) return false;
 
   // 2. 如果是补班日，肯定是工作日
-  if (WORKDAYS_ADJUSTED_2025.includes(dateStr)) return true;
+  if (info.isCompWork) return true;
 
   // 3. 剩下的：如果是周末则不是工作日，否则是工作日
   return !isWeekend(dateStr);
@@ -104,6 +149,7 @@ export const getMonthDaysStatus = (year, month) => {
     const date = startDate.date(i);
     const dateStr = date.format('YYYY-MM-DD');
     const isWork = isWorkDay(dateStr);
+    const dayInfo = getDayInfo(dateStr);
     const recordType = records[dateStr];
 
     days.push({
@@ -111,8 +157,8 @@ export const getMonthDaysStatus = (year, month) => {
       day: i,
       weekDay: date.day(),
       isWorkDay: isWork,
-      isHoliday: isHoliday(dateStr),
-      holidayName: HOLIDAYS_2025[dateStr]?.name,
+      isHoliday: dayInfo.isHoliday,
+      holidayName: dayInfo.name,
       status: recordType // 'office' | 'leave' | undefined
     });
   }
