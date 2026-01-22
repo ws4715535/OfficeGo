@@ -49,6 +49,25 @@
           color: $color-text-main;
         }
 
+        .bottom-text {          
+          bottom: 2rpx;
+          font-size: 18rpx;
+          transform: scale(0.9);
+          
+          &.is-holiday {            
+            color: $color-leave; // 假期红色
+          }
+          
+          &.is-work {             
+             color: $color-text-sub; // 补班灰色
+          }
+        }
+        
+        // 调整文字布局为垂直分布
+        flex-direction: column;
+        justify-content: center;
+        position: relative; // 为absolute定位
+
         /* 状态样式 */
         
         // 1. 非本月
@@ -83,6 +102,10 @@
             color: $color-white !important;
             font-weight: bold;
           }
+          .bottom-text {
+            color: $color-white !important;
+            opacity: 0.9;
+          }
         }
 
         // 5. 特殊/请假 (优先级更高)
@@ -93,6 +116,10 @@
           .date-text {
             color: $color-white !important;
             font-weight: bold;
+          }
+          .bottom-text {
+            color: $color-white !important;
+            opacity: 0.9;
           }
         }
       }

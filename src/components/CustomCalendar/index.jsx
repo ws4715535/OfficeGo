@@ -17,6 +17,7 @@ const isSameDay = (d1Str, d2) => d1Str === formatDateStr(d2.getFullYear(), d2.ge
 const CustomCalendar = ({
   value = [], // 选中的日期数组 ['2026-01-05']
   specialDates = [], // 特殊日期数组 ['2026-01-06'] (e.g. Leave)
+  marks = {}, // 节假日标记 { '2026-01-01': { bottomText: '元旦', isHoliday: true, isWork: false } }
   onSelect,
   onLongPress,
   currentDate: propCurrentDate,
@@ -66,6 +67,13 @@ const CustomCalendar = ({
 
   const handleDayClick = (item) => {
     if (item.type !== 'current') return;
+    
+    // 公共假期（非调休上班）不可操作
+    const mark = marks[item.dateStr];
+    if (mark && mark.isHoliday && !mark.isWork) {
+        return;
+    }
+
     if (onSelect) {
       const isSelected = value.includes(item.dateStr);
       const newValue = isSelected ? value.filter(d => d !== item.dateStr) : [...value, item.dateStr];
@@ -75,6 +83,13 @@ const CustomCalendar = ({
 
   const handleDayLongPress = (item) => {
     if (item.type !== 'current') return;
+    
+    // 公共假期（非调休上班）不可操作
+    const mark = marks[item.dateStr];
+    if (mark && mark.isHoliday && !mark.isWork) {
+        return;
+    }
+
     if (onLongPress) {
         onLongPress(item.dateStr);
     }
@@ -92,6 +107,7 @@ const CustomCalendar = ({
       {/* 日期网格 */}
       <View className="calendar-grid">
         {calendarDays.map((item, index) => {
+          const mark = marks[item.dateStr];
           const isSelected = value.includes(item.dateStr);
           const isSpecial = specialDates.includes(item.dateStr);
           const isToday = isSameDay(item.dateStr, todayDate);
@@ -114,6 +130,12 @@ const CustomCalendar = ({
             >
               <View className={cardClass}>
                 <Text className="date-text">{item.day}</Text>
+                {/* 底部标记：假期名或"班" */}
+                {isCurrentMonth && mark && (
+                    <Text className={classNames('bottom-text', { 'is-work': mark.isWork, 'is-holiday': mark.isHoliday && !mark.isWork })}>
+                        {mark.bottomText}
+                    </Text>
+                )}
               </View>
             </View>
           );

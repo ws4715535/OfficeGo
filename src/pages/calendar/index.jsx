@@ -1,5 +1,6 @@
 import { View, Text, Image } from '@tarojs/components'
 import React, { useRef, useState, useEffect, useMemo } from 'react'
+import Taro from '@tarojs/taro'
 import dayjs from 'dayjs'
 import classNames from 'classnames'
 import CustomCalendar from '../../components/CustomCalendar'
@@ -9,10 +10,46 @@ import leftIcon from '../../assets/left.png'
 import rightIcon from '../../assets/right.png'
 import './index.scss'
 
+// Safe require for holidayData
+let defaultHolidayData = null;
+try {
+  defaultHolidayData = require('../../constants/holidayData.json');
+} catch (e) {
+  console.warn('Local holiday data not found');
+}
+
 export default function Calendar() {
   const { loadDays, toggleLeave, days, setDate, officeDates, handleBatchChange } = useCalendar();
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [holidayData, setHolidayData] = useState(null)
   
+  // Initialize Holiday Data: Cache -> Cloud
+  useEffect(() => {
+    // 1. Try Cache
+    const cached = Taro.getStorageSync('HOLIDAY_DATA');
+    if (cached) {
+        setHolidayData(cached);
+    } else {
+        // Fallback to local default if no cache
+        if (defaultHolidayData) {
+            setHolidayData(defaultHolidayData);
+        }
+    }
+
+    // 2. Fetch from Cloud (Silent Update)
+    Taro.cloud.callFunction({
+        name: 'fetchHolidayData'
+    }).then(res => {
+        if (res.result && res.result.Years) {
+            console.log('Holiday data updated from cloud');
+            Taro.setStorageSync('HOLIDAY_DATA', res.result);
+            setHolidayData(res.result);
+        }
+    }).catch(err => {
+        console.error('Failed to fetch holiday data:', err);
+    });
+  }, []);
+
   useEffect(() => {
     setDate(currentDate);
   }, [currentDate, setDate])
@@ -28,24 +65,80 @@ export default function Calendar() {
       .map(d => d.date);
   }, [days]);
 
-  // Mock Data
-  const marks = {
-    '2026-01-01': { topText: '休', topColor: '#EF4444', bottomText: '元旦', isHoliday: true },
-    '2026-02-14': { bottomDot: true, bottomColor: '#EC4899' },
-    '2026-01-24': { bottomText: '除夕', isHoliday: true },
-    '2026-01-25': { topText: '休', topColor: '#EF4444', bottomText: '春节', isHoliday: true },
-  };
+  // 2. Generate Marks from Holiday JSON
+  const marks = useMemo(() => {
+    if (!holidayData || !holidayData.Years) return {};
+    
+    const year = dayjs(currentDate).year();
+    const holidays = holidayData.Years[year] || [];
+    const markObj = {};
 
-  // 2. Handlers
+    holidays.forEach(h => {
+        // 放假范围
+        let curr = dayjs(h.StartDate);
+        const end = dayjs(h.EndDate);
+        while (curr.isBefore(end) || curr.isSame(end, 'day')) {
+            const dateStr = curr.format('YYYY-MM-DD');
+            markObj[dateStr] = {
+                bottomText: h.Name, // 显示节日名
+                isHoliday: true,
+                isWork: false,
+            };
+            curr = curr.add(1, 'day');
+        }
+
+        // 调休补班
+        if (h.CompDays) {
+            h.CompDays.forEach(d => {
+                markObj[d] = {
+                    bottomText: '补班',
+                    isHoliday: false, // 逻辑上不是假
+                    isWork: true,     // 逻辑上是工作日
+                };
+            });
+        }
+    });
+    return markObj;
+  }, [currentDate, holidayData]);
+
+  // 3. Month Summary
+  const monthSummary = useMemo(() => {
+    const year = dayjs(currentDate).year();
+    const month = dayjs(currentDate).month(); // 0-11
+    
+    // 请假天数
+    // Filter days in current month
+    const leaveCount = days.filter(d => {
+        const dDate = dayjs(d.date);
+        return dDate.year() === year && dDate.month() === month && d.status === RECORD_TYPES.LEAVE;
+    }).length;
+
+    // 公共假期详情
+    const holidays = (holidayData && holidayData.Years && holidayData.Years[year]) || [];
+    const holidayDetails = holidays.filter(h => {
+        const start = dayjs(h.StartDate);
+        const end = dayjs(h.EndDate);
+        // Check if holiday overlaps with current month
+        // Simple check: start or end is in this month
+        return (start.year() === year && start.month() === month) || 
+               (end.year() === year && end.month() === month);
+    }).map(h => {
+        let desc = `${h.Name} ${dayjs(h.StartDate).format('M.D')}-${dayjs(h.EndDate).format('M.D')}`;
+        if (h.CompDays && h.CompDays.length > 0) {
+            const compDates = h.CompDays.map(d => dayjs(d).format('M.D')).join('、');
+            desc += ` (${compDates}补班)`;
+        }
+        return desc;
+    });
+
+    return {
+        leaveCount,
+        holidayDetails // Array of strings
+    };
+  }, [currentDate, days, holidayData]);
+
+  // 4. Handlers
   const handleSelect = (date, newList) => {
-    // CustomCalendar returns the new list of strings.
-    // We need to pass this to handleBatchChange which expects Date objects or strings (we verified it maps strings).
-    // But wait, handleBatchChange logic:
-    // It compares "new list" vs "current list" to upsert/delete.
-    // So passing the newList (strings) should work if handleBatchChange handles strings.
-    // Let's check handleBatchChange in useCalendar again. 
-    // const newDateStrs = newDates.map(d => dayjs(d).format('YYYY-MM-DD')); 
-    // dayjs('2026-01-01') works.
     handleBatchChange(newList);
   };
 
@@ -109,6 +202,19 @@ export default function Calendar() {
         <View className='legend-row'>
           <View className='dot leave' />
           <Text className='legend-text'>长按标记 "请假"</Text>
+        </View>
+        <View className='legend-row'>
+          <View className='dot leave' />
+             <Text className='legend-text'>本月请假 {monthSummary.leaveCount} 天</Text>
+        </View>
+        <View className='legend-row'>
+          <View className='dot leave' />
+          <Text className='legend-text'>本月公共假期: </Text>
+                   {monthSummary.holidayDetails && monthSummary.holidayDetails.length > 0 && (
+             monthSummary.holidayDetails.map((detail, idx) => (
+                    <Text className='legend-text'>{detail}</Text>
+             ))
+         )}
         </View>
       </View>
     </View>
