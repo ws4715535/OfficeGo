@@ -103,7 +103,11 @@ export const getMonthStats = (year, month, settings) => {
     }
   }
 
-  // 有效工作日 = 当月工作日 - 用户请假天数
+  // 有效工作日 = 当月工作日 (本月总日 - 周末(含补班) - 公共假期) - 用户请假天数
+  // Logic: 
+  // 1. totalWorkDays calculated above is exactly (Total - Weekend + Makeup - Holiday)
+  // 2. leaveDays is counted only if it falls on a work day
+  // 3. effectiveWorkDays = totalWorkDays - leaveDays
   const effectiveWorkDays = Math.max(0, totalWorkDays - leaveDays);
 
   // 应到天数 = 有效工作日 * 比例
