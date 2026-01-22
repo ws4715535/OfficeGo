@@ -86,7 +86,7 @@
         // 3. 今天 (未选中)
         &.is-today {
           background-color: $color-white;
-          border-color: $color-primary;
+          border-color: rgba($color-primary, 0.3) !important; // Add opacity
           .date-text {
             color: $color-text-main;
             font-weight: bold;
@@ -95,8 +95,9 @@
 
         // 4. 选中 (优先级最高)
         &.is-selected {
-          background-color: $color-primary !important;
-          box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.3);
+          // background-color: $color-primary !important;
+          background-color: rgba($color-primary, 0.8) !important; // Add opacity
+          box-shadow: 0 4rpx 12rpx rgba(78, 70, 229, 0.14);
           border-color: transparent; // 覆盖今天的边框
           .date-text {
             color: $color-white !important;
@@ -110,8 +111,9 @@
 
         // 5. 特殊/请假 (优先级更高)
         &.is-special {
-          background-color: $color-leave !important;
-          box-shadow: 0 4rpx 12rpx rgba(234, 88, 12, 0.3);
+          // background-color: $color-leave !important;
+          background-color: rgba($color-leave, 0.85) !important; // Add opacity
+          box-shadow: 0 4rpx 12rpx rgba(234, 12, 12, 0.3);
           border-color: transparent;
           .date-text {
             color: $color-white !important;
