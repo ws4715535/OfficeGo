@@ -142,6 +142,39 @@
 //   }
 // }
 
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 8rpx rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes ripple-primary {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10rpx rgba(79, 70, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+@keyframes ripple-leave {
+  0% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10rpx rgba(234, 88, 12, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
+  }
+}
+
 /* 4. Legend */
 .legend-container {
   margin-top: $spacing-md;
@@ -159,9 +192,37 @@
       width: 20rpx;
       height: 20rpx;
       border-radius: 50%;
+      position: relative; // Needed for ::after
 
-      &.office { background: $color-primary; }
-      &.leave { background: $color-leave; } // Using configured leave color
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 50%;
+        z-index: 0;
+      }
+
+      &.office { 
+        background: $color-primary; 
+        &::after {
+          animation: ripple-primary 2s infinite;
+        }
+      }
+      &.leave { 
+        background: $color-leave; 
+        &::after {
+          animation: ripple-leave 2s infinite;
+        }
+      } 
+      &.holiday { 
+        background: $color-leave; 
+        &::after {
+          animation: ripple-leave 2s infinite;
+        }
+      }
     }
 
     .legend-text {
