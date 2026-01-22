@@ -2,7 +2,7 @@
   "name": "officeGo",
   "version": "1.0.0",
   "private": true,
-  "description": "officeGo",
+  "description": "来了么到岗助手 - 混合办公团队考勤利器",
   "templateInfo": {
     "name": "default",
     "typescript": false,

@@ -1,8 +1,8 @@
 {
   "miniprogramRoot": "dist/",
   "cloudfunctionRoot": "./cloudfunctions",
-  "projectname": "officeGo",
-  "description": "officeGo",
+  "projectname": "来了么到岗助手",
+  "description": "混合办公团队考勤利器",
   "appid": "wx80976970a308722a",
   "setting": {
     "urlCheck": true,
