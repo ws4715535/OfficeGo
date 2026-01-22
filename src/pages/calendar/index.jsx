@@ -1,8 +1,8 @@
 import { View, Text, Image } from '@tarojs/components'
-import React, { useRef, useState, useEffect } from 'react'
-import { CalendarCard, ConfigProvider } from '@nutui/nutui-react-taro'
+import React, { useRef, useState, useEffect, useMemo } from 'react'
 import dayjs from 'dayjs'
 import classNames from 'classnames'
+import CustomCalendar from '../../components/CustomCalendar'
 import { useCalendar } from '../../hooks/useCalendar'
 import { RECORD_TYPES } from '../../constants/config'
 import leftIcon from '../../assets/left.png'
@@ -12,19 +12,54 @@ import './index.scss'
 export default function Calendar() {
   const { loadDays, toggleLeave, days, setDate, officeDates, handleBatchChange } = useCalendar();
   const [currentDate, setCurrentDate] = useState(new Date())
-  const calendarRef = useRef(null)
-
+  
   useEffect(() => {
     setDate(currentDate);
   }, [currentDate, setDate])
 
+  // 1. Prepare Data for CustomCalendar
+  const officeDateStrs = useMemo(() => {
+    return officeDates.map(d => dayjs(d).format('YYYY-MM-DD'));
+  }, [officeDates]);
+
+  const leaveDateStrs = useMemo(() => {
+    return days
+      .filter(d => d.status === RECORD_TYPES.LEAVE)
+      .map(d => d.date);
+  }, [days]);
+
+  // Mock Data
+  const marks = {
+    '2026-01-01': { topText: '休', topColor: '#EF4444', bottomText: '元旦', isHoliday: true },
+    '2026-02-14': { bottomDot: true, bottomColor: '#EC4899' },
+    '2026-01-24': { bottomText: '除夕', isHoliday: true },
+    '2026-01-25': { topText: '休', topColor: '#EF4444', bottomText: '春节', isHoliday: true },
+  };
+
+  // 2. Handlers
+  const handleSelect = (date, newList) => {
+    // CustomCalendar returns the new list of strings.
+    // We need to pass this to handleBatchChange which expects Date objects or strings (we verified it maps strings).
+    // But wait, handleBatchChange logic:
+    // It compares "new list" vs "current list" to upsert/delete.
+    // So passing the newList (strings) should work if handleBatchChange handles strings.
+    // Let's check handleBatchChange in useCalendar again. 
+    // const newDateStrs = newDates.map(d => dayjs(d).format('YYYY-MM-DD')); 
+    // dayjs('2026-01-01') works.
+    handleBatchChange(newList);
+  };
+
+  const handleLongPress = (date) => {
+    toggleLeave(date);
+  };
+
   // Custom Header
   const handlePrevMonth = () => {
-    calendarRef.current?.jump(-1);
+    setCurrentDate(d => dayjs(d).subtract(1, 'month').toDate());
   }
 
   const handleNextMonth = () => {
-    calendarRef.current?.jump(1);
+    setCurrentDate(d => dayjs(d).add(1, 'month').toDate());
   }
 
   const renderHeader = () => {
@@ -46,47 +81,25 @@ export default function Calendar() {
     )
   }
 
-  // 渲染日期内容
-  // 仅负责显示数字和"请假"状态的特殊样式
-  // "到岗"(Office) 状态由 CalendarCard 的 type="multiple" 自动处理选中样式
-  const renderDay = (day) => {
-    // day: { year, month, date, type }
-    const dayJsDate = dayjs(`${day.year}-${day.month}-${day.date}`);
-    const dateStr = dayJsDate.format('YYYY-MM-DD');
-    const dayData = days.find(d => d.date === dateStr);
-    
-    const isCurrentMonth = day.type === 'current';
-    const isToday = dayJsDate.isSame(dayjs(), 'day');
-    const isWeekend = dayJsDate.day() === 0 || dayJsDate.day() === 6;
-    
-    const isLeave = dayData?.status === RECORD_TYPES.LEAVE;
-    const isOffice = dayData?.status === RECORD_TYPES.OFFICE;
-    
-    if (!isCurrentMonth) {
-      return <View className='day-cell other-month'><Text>{day.date}</Text></View>;
-    }
-
-    return <View className='day-cell other-month'><Text>{day.date}</Text></View>
-  }
-
-  const handlePageChange = (val) => {
-    const newDate = new Date(val.year, val.month - 1, 1);
-    setCurrentDate(newDate);
-  }
-
   return (
     <View className='calendar-page'>
       {renderHeader()}
-        <CalendarCard
-          ref={calendarRef}
-          type="multiple"
-          value={officeDates} // 绑定已到岗日期
-          onChange={handleBatchChange} // 处理选中变化
-          onPageChange={handlePageChange}
-          renderDay={renderDay}
-          firstDayOfWeek={0}
-          title={" "}
-        />
+      
+      <CustomCalendar
+        currentDate={currentDate}
+        value={officeDateStrs}
+        specialDates={leaveDateStrs}
+        onSelect={handleSelect}
+        onLongPress={handleLongPress}
+        marks={marks}
+        disableWeekend={true}
+        config={{
+          dayFontSize: '32rpx',
+          headerTitleSize: '36rpx',
+          selectedBgColor: '#5B5CEB', // 你的紫色
+          selectedRadius: '4rpx',    // 20rpx 是圆角矩形，50% 是正圆，你可以试试哪个顺眼
+        }}
+      />
 
       <View className='legend-container'>
         <View className='legend-row'>
