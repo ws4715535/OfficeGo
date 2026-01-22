@@ -75,6 +75,7 @@ const CustomCalendar = ({
     }
 
     if (onSelect) {
+      console.log("item:", item);
       const isSelected = value.includes(item.dateStr);
       const newValue = isSelected ? value.filter(d => d !== item.dateStr) : [...value, item.dateStr];
       onSelect(item.dateStr, newValue);
@@ -83,7 +84,6 @@ const CustomCalendar = ({
 
   const handleDayLongPress = (item) => {
     if (item.type !== 'current') return;
-    
     // 公共假期（非调休上班）不可操作
     const mark = marks[item.dateStr];
     if (mark && mark.isHoliday && !mark.isWork) {
@@ -91,7 +91,8 @@ const CustomCalendar = ({
     }
 
     if (onLongPress) {
-        onLongPress(item.dateStr);
+      console.log("onLongPress:", item);
+      onLongPress(item.dateStr);
     }
   }
 
