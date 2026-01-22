@@ -1,0 +1,101 @@
+@import "../../styles/variables.scss";
+
+.custom-calendar {
+  background: $color-white;
+  border-radius: 32rpx;
+  padding: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+
+  .calendar-week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 10rpx;
+
+    .week-day {
+      text-align: center;
+      color: $color-text-placeholder;
+      font-size: 26rpx;
+      padding-bottom: 16rpx;
+    }
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 6rpx;
+
+    .calendar-cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      // cell-height will be set inline or via var if dynamic
+      height: 78rpx;
+
+      .date-card {
+        // card-size will be set inline or via var
+        width: 70rpx;
+        height: 70rpx;
+        border-radius: 16rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        border: 2rpx solid transparent;
+        transition: all 0.2s ease;
+
+        .date-text {
+          font-size: 30rpx;
+          font-weight: 500;
+          color: $color-text-main;
+        }
+
+        /* 状态样式 */
+        
+        // 1. 非本月
+        &.is-other-month {
+          background-color: #F9FAFB;
+          .date-text {
+            color: $color-divider;
+          }
+        }
+
+        // 2. 普通日期 (本月)
+        &.is-normal {
+          background-color: #F7F8FA;
+        }
+
+        // 3. 今天 (未选中)
+        &.is-today {
+          background-color: $color-white;
+          border-color: $color-primary;
+          .date-text {
+            color: $color-text-main;
+            font-weight: bold;
+          }
+        }
+
+        // 4. 选中 (优先级最高)
+        &.is-selected {
+          background-color: $color-primary !important;
+          box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.3);
+          border-color: transparent; // 覆盖今天的边框
+          .date-text {
+            color: $color-white !important;
+            font-weight: bold;
+          }
+        }
+
+        // 5. 特殊/请假 (优先级更高)
+        &.is-special {
+          background-color: $color-leave !important;
+          box-shadow: 0 4rpx 12rpx rgba(234, 88, 12, 0.3);
+          border-color: transparent;
+          .date-text {
+            color: $color-white !important;
+            font-weight: bold;
+          }
+        }
+      }
+    }
+  }
+}
