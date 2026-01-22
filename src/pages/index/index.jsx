@@ -184,7 +184,7 @@ export default function Index() {
               <Image src={targetIcon} style={{ width: '44rpx', height: '44rpx' }} />
             </View>
             <Text className='row-label'>本月总目标</Text>
-            <Text className='row-value'>{stats.targetDays} 天</Text>
+            <Text className='row-value'>{stats.targetDays}</Text>
           </View>
         </View>
       </View>
