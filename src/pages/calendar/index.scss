@@ -171,3 +171,16 @@
     }
   }
 }
+
+/* 5. Month Summary - reusing legend styles but with card background */
+.month-summary {
+  background: $color-white;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: $shadow-sm;
+  // Reset margin-top from legend-container if needed, or keep it for spacing
+  margin-top: $spacing-md;
+  
+  // Override legend-container's padding-left if it has one
+  padding-left: $spacing-md;
+}
