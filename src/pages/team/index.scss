@@ -216,7 +216,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
 
     .bar {
       width: 24rpx; // Fixed width
-      background: #999;
+      background: #E5E7EB;
       border-radius: $radius-full;
       transition: all 0.3s ease;
 
@@ -235,9 +235,23 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       height: 8rpx;
       background: $color-primary;
       border-radius: 50%;
-      margin-top: 4rpx;
+      margin-top: 46px;
       position: absolute;
       bottom: -12rpx;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: $color-primary;
+        transform: translate(-50%, -50%);
+        animation: ripple 1.5s infinite ease-out;
+        z-index: -1;
+      }
     }
 
     &.active {
@@ -458,4 +472,15 @@ $color-white-fixed: #FFFFFF; // Fallback definition
 @keyframes modalPop {
   0% { transform: scale(0.9); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
 }

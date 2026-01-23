@@ -37,6 +37,9 @@ exports.main = async (event, context) => {
       case 'getTeamStatus':
         result = await getTeamStatus(myOpenId, payload); // 聚合查询
         break;
+      case 'getTeamDetail':
+        result = await getTeamDetail(myOpenId, payload); // 新增：首屏大管家
+        break;
       default:
         result = { code: 400, msg: 'Unknown action' };
     }
@@ -75,7 +78,7 @@ async function createTeam(userId, { name, userInfo }) {
         inviteCode,
         ownerId: userId,
         createdAt: now,
-        updatedAt: now // 新增字段
+        updatedAt: now
       }
     });
 
@@ -87,7 +90,8 @@ async function createTeam(userId, { name, userInfo }) {
         teamId,
         userId,
         role: 'admin',
-        userInfo, // 保存快照
+        nickName: userInfo.nickName || '',
+        avatarUrl: userInfo.avatarUrl || '',
         joinedAt: now
       }
     });
@@ -158,48 +162,48 @@ async function getMyTeams(userId) {
   return { code: 200, data: list };
 }
 
-// 4. 获取团队今日状态 (核心：为 UI 供数)
+// 4. 获取团队今日状态 (小兵：只负责按需加载)
 async function getTeamStatus(myUserId, { teamId, dateStr }) {
   // dateStr 格式: "2026-01-23"
   
   // 第一步：获取团队所有成员
   const membersRes = await db.collection('team_members')
     .where({ teamId })
-    .limit(100) // 假设团队不超过100人
+    .limit(100)
     .get();
   
   const members = membersRes.data;
   const memberIds = members.map(m => m.userId);
 
-  // 第二步：批量获取这些成员在指定日期的考勤状态
+  // 第二步：获取指定日期的考勤状态
   const attendanceRes = await db.collection('attendance_records')
     .where({
       _openid: _.in(memberIds),
-      date: dateStr // 修正: 原代码是 dateStr: dateStr，但数据库字段是 date
+      date: dateStr
     })
     .get();
 
   const attendanceMap = {};
   attendanceRes.data.forEach(r => {
-    attendanceMap[r._openid] = r.status; // status: 'office', 'leave', 'remote'
+    attendanceMap[r._openid] = r.status;
   });
 
-  // 第三步：数据组装 (Merge)
+  // 第三步：数据组装
   const resultList = [];
   members.forEach(m => {
     const status = attendanceMap[m.userId];
-    if (status) { // 只保留有状态的成员
+    if (status) { 
       resultList.push({
         userId: m.userId,
-        name: m.userInfo.nickName || 'Unknown',
-        avatar: m.userInfo.avatarUrl || '',
+        name: m.nickName || 'Unknown',
+        avatar: m.avatarUrl || '',
         status: status,
         isMe: m.userId === myUserId
       });
     }
   });
 
-  // 第四步：排序 (Office > Remote > Leave)
+  // 第四步：排序
   const sortScore = { 'office': 4, 'remote': 3, 'leave': 2 };
   resultList.sort((a, b) => (sortScore[b.status] || 0) - (sortScore[a.status] || 0));
 
@@ -208,6 +212,111 @@ async function getTeamStatus(myUserId, { teamId, dateStr }) {
     data: {
       members: resultList,
       totalMembers: members.length
+    }
+  };
+}
+
+// 5. 获取团队详情 (大管家：首屏加载)
+async function getTeamDetail(myUserId, { teamId }) {
+  console.log(`[TeamAPI] Version: Fix-Scope-v2`);
+  console.log(`[TeamAPI] getTeamDetail Start: teamId=${teamId}`);
+  const now = new Date();
+  // 计算本周周一
+  const day = now.getDay(); 
+  const diff = now.getDate() - (day === 0 ? 6 : day - 1); 
+  const monday = new Date(now);
+  monday.setDate(diff);
+
+  // 生成本周7天日期字符串
+  const weekDates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    weekDates.push(d.toISOString().split('T')[0]);
+  }
+
+  // 并行查询：今日详情 + 本周统计
+  const todayStr = now.toISOString().split('T')[0];
+  
+  // 1. 获取今日状态 (复用 getTeamStatus 逻辑)
+  const todayStatusPromise = getTeamStatus(myUserId, { teamId, dateStr: todayStr });
+
+  // 2. 获取本周统计
+  // 为了性能，这里我们只查 officeCount，不查具体人
+  // 先查出所有成员ID
+  const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
+  const members = membersRes.data;
+  const memberIds = members.map(m => m.userId);
+  const totalMembers = members.length;
+
+  const weekStatsPromise = db.collection('attendance_records')
+    .aggregate()
+    .match({
+      _openid: _.in(memberIds),
+      date: _.in(weekDates),
+      status: 'office' // 只统计去办公室的人数
+    })
+    .group({
+      _id: '$date',
+      officeCount: $.sum(1)
+    })
+    .end();
+
+  const [todayRes, weekStatsRes] = await Promise.all([todayStatusPromise, weekStatsPromise]);
+  
+  // 安全获取数据
+  const todayMembers = (todayRes && todayRes.data && todayRes.data.members) ? todayRes.data.members : [];
+  const weekStatsList = (weekStatsRes && weekStatsRes.list) ? weekStatsRes.list : [];
+
+  console.log(`[TeamAPI] getTeamDetail Fetched Data: todayCount=${todayMembers.length}, weekStatsCount=${weekStatsList.length}`);
+
+  // 3. 获取团队基本信息 (baseInfo)
+  const teamInfoRes = await db.collection('teams').doc(teamId).get();
+  const teamInfo = teamInfoRes.data;
+
+  // 处理周统计数据
+  const statsMap = {};
+  weekStatsList.forEach(item => {
+    statsMap[item._id] = item.officeCount;
+  });
+
+  const weeklyStats = weekDates.map(date => ({
+    date,
+    officeCount: statsMap[date] || 0,
+    totalCount: totalMembers,
+    ratio: totalMembers > 0 ? (statsMap[date] || 0) / totalMembers : 0
+  }));
+
+  // 计算 bestDay
+  let bestDay = { dayName: '', count: 0 };
+  let maxCount = -1;
+  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  
+  weeklyStats.forEach((stat, index) => {
+    if (stat.officeCount > maxCount) {
+      maxCount = stat.officeCount;
+      bestDay = {
+        dayName: weekDays[index],
+        count: maxCount
+      };
+    }
+  });
+
+  return {
+    code: 200,
+    data: {
+      baseInfo: {
+        name: teamInfo.name,
+        inviteCode: teamInfo.inviteCode,
+        ownerId: teamInfo.ownerId,
+        updatedAt: teamInfo.updatedAt
+      },
+      members: todayMembers, // 今日成员列表（含状态）
+      summary: {
+        weeklyTrend: weeklyStats, // 包含 ratio, officeCount 等
+        bestDay: bestDay,
+        totalMembers: totalMembers
+      }
     }
   };
 }

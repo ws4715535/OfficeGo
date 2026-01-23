@@ -23,3 +23,4 @@ export const createTeam = (name, userInfo) => callTeamApi('createTeam', { name, 
 export const joinTeam = (inviteCode, userInfo) => callTeamApi('joinTeam', { inviteCode, userInfo });
 export const getMyTeams = () => callTeamApi('getMyTeams');
 export const getTeamStatus = (teamId, dateStr) => callTeamApi('getTeamStatus', { teamId, dateStr });
+export const getTeamDetail = (teamId) => callTeamApi('getTeamDetail', { teamId });

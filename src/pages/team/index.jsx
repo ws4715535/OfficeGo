@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input } from '@tarojs/components'
 import { Skeleton, pxTransform } from '@nutui/nutui-react-taro'
-import { getMyTeams, getTeamStatus, joinTeam, createTeam } from '../../services/team'
+import { getMyTeams, getTeamStatus, getTeamDetail, joinTeam, createTeam } from '../../services/team'
 import EmptyState from './empty/index'
 import AuthService from '../../services/auth'
 import downIcon from '../../assets/down.png'
@@ -71,6 +71,9 @@ export default function Team() {
         setCurrentTeam(targetTeam)
         Taro.setStorageSync('last_team_id', targetTeam.teamId)
         
+        // Fetch Detail for Initial Load
+        await fetchTeamDetail(targetTeam.teamId)
+
         setViewState('active')
       } else {
         // State Transition: Loading -> Empty
@@ -85,28 +88,53 @@ export default function Team() {
     }
   }
 
-  // 3. Fetch Members (Only when Active)
-  useEffect(() => {
-    const fetchStatus = async () => {
-      if (viewState !== 'active' || !currentTeam) return
+  // 3. Fetch Team Detail (Initial Load - Big Manager)
+  const fetchTeamDetail = async (teamId) => {
+      try {
+          const res = await getTeamDetail(teamId)
+          console.log('Team Detail Response:', res)
+          const { members, summary } = res
+          
+          // Update Today's Members
+          updateMembersList(members)
+          
+          // Update Weekly Stats
+          setWeeklyStats(summary.weeklyTrend)
+          
+          // Reset selection to today
+          setSelectedDay(todayIndex)
+      } catch (err) {
+          console.error('Fetch team detail failed', err)
+      }
+  }
+
+  const handleDayClick = async (index) => {
+      if (index === selectedDay) return
       
-      // Save last team choice
-      Taro.setStorageSync('last_team_id', currentTeam.teamId)
+      setSelectedDay(index)
+      setMembersLoading(true) // Local loading
       
-      setMembersLoading(true)
       try {
         const now = new Date()
         const currentDayIndex = getDayIndex(now) // 0-6
-        const diff = selectedDay - currentDayIndex
+        const diff = index - currentDayIndex
         
         const targetDate = new Date(now)
         targetDate.setDate(now.getDate() + diff)
         const dateStr = targetDate.toISOString().split('T')[0]
 
         const res = await getTeamStatus(currentTeam.teamId, dateStr)
-        const { members: memberList, totalMembers } = res
+        updateMembersList(res.members)
         
-        const uiMembers = memberList.map(m => ({
+      } catch (err) {
+          console.error('Fetch daily status failed', err)
+      } finally {
+          setMembersLoading(false)
+      }
+  }
+  
+  const updateMembersList = (memberList) => {
+      const uiMembers = memberList.map(m => ({
           id: m.userId,
           name: m.name,
           avatar: m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + m.name,
@@ -116,47 +144,8 @@ export default function Team() {
           isMe: m.isMe,
           isOnline: true
         }))
-        
         setMembers(uiMembers)
-
-        // Fetch Weekly Stats (Parallel or separate, for now we do it here)
-        // Note: Ideally this should be a separate API call 'getWeeklyStats'
-        // But for MVP we can simulate or fetch 7 days. 
-        // Let's implement a simple fetch for the whole week to drive the chart
-        const monday = new Date(now)
-        monday.setDate(now.getDate() - currentDayIndex)
-        
-        const weekPromises = []
-        for(let i=0; i<7; i++) {
-            const d = new Date(monday)
-            d.setDate(monday.getDate() + i)
-            const dStr = d.toISOString().split('T')[0]
-            weekPromises.push(getTeamStatus(currentTeam.teamId, dStr))
-        }
-        
-        const weekResults = await Promise.all(weekPromises)
-        const stats = weekResults.map(dayRes => {
-            const dayMembers = dayRes.members || []
-            const dayTotal = dayRes.totalMembers || 0
-            
-            const officeCount = dayMembers.filter(m => m.status === 'office').length
-            
-            return {
-                officeCount,
-                totalCount: dayTotal,
-                ratio: dayTotal > 0 ? (officeCount / dayTotal) : 0
-            }
-        })
-        setWeeklyStats(stats)
-      } catch (err) {
-        console.error('Fetch status failed', err)
-      } finally {
-        setMembersLoading(false)
-      }
-    }
-
-    fetchStatus()
-  }, [currentTeam, selectedDay, viewState])
+  }
 
   // --- Helpers ---
   const getStatusText = (status) => {
@@ -328,18 +317,17 @@ export default function Team() {
                 // Min height 10% so bar is visible/clickable even if 0
                 // Max height 100%
                 const barHeight = stat.ratio > 0 ? `${stat.ratio * 100}%` : '5%'
-                const opacity = stat.ratio > 0 ? 1 : 0.3
                 
                 return (
                 <View 
                   key={index} 
                   className={`day-column ${selectedDay === index ? 'active' : ''}`}
-                  onClick={() => setSelectedDay(index)}
+                  onClick={() => handleDayClick(index)}
                 >
                   <View className='bar-container'>
                     <View 
                       className='bar' 
-                      style={{ height: barHeight, opacity: opacity }} 
+                      style={{ height: barHeight }} 
                     />
                   </View>
                   <Text className='day-label'>{label}</Text>
@@ -376,7 +364,14 @@ export default function Team() {
                 {members.filter(m => m.status === 'OFFICE').map(member => (
                     <View key={member.id} className='member-card'>
                     <View className='avatar-container'>
-                        <Image src={member.avatar} className='avatar' />
+                        <Image 
+                          src={member.avatar} 
+                          className='avatar' 
+                          onError={(e) => {
+                            // Fallback to default avatar on error
+                            e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + member.name
+                          }}
+                        />
                         {(member.isOnline || member.status === 'OFFICE') && <View className='online-dot' />}
                     </View>
                     
