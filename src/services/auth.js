@@ -6,6 +6,14 @@ import Taro from '@tarojs/taro'
  */
 const AuthService = {
   /**
+   * Get current user ID from local storage
+   * @returns {string|null} userId
+   */
+  getUserId: () => {
+    return Taro.getStorageSync('userId') || null
+  },
+
+  /**
    * Login to CloudBase
    * @param {object} userInfo - Optional user info to update/register
    * @returns {Promise<{user: object, openid: string}>}
@@ -19,8 +27,10 @@ const AuthService = {
       console.log('AuthService Login Result:', res)
       
       // Cache userId (openid) for global usage
-      if (res.result && res.result.openid) {
-        Taro.setStorageSync('userId', res.result.openid)
+      // Structure: res.result.data._openid
+      if (res.result && res.result.data && res.result.data._openid) {
+        Taro.setStorageSync('userId', res.result.data._openid)
+        console.log('userId cached:', res.result.data._openid)
       }
       
       return res.result

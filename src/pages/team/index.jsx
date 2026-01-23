@@ -45,12 +45,16 @@ export default function Team() {
     const lastTeamId = Taro.getStorageSync('last_team_id')
     let cachedData = null
 
+    console.log('userId:', userId)
+    console.log('lastTeamId:', lastTeamId)
+
     if (userId && lastTeamId) {
        const cacheKey = `team_detail_${userId}_${lastTeamId}`
        cachedData = Taro.getStorageSync(cacheKey)
     }
 
     if (cachedData && cachedData.teamId) {
+      console.log('Cached data found:', cachedData)
         // 如果有缓存，先展示缓存内容
         setViewState('active')
         // 恢复上下文
@@ -77,16 +81,27 @@ export default function Team() {
         // 只有当缓存的ID和当前页面逻辑需要的ID一致时，才考虑静默刷新
         // 这里我们可以简单地总是尝试静默刷新以保持数据最新，但避免了loading闪烁
         try {
-            await AuthService.login()
+            const userId = AuthService.getUserId()
+            if (!userId) {
+               await AuthService.login()
+            }
             refreshTeams(true) // silent mode
         } catch (e) {
             console.error('Silent refresh failed', e)
         }
     } else {
         // 无缓存，走常规流程
+        console.log('No cached data, fetching normally')
         setViewState('loading')
         try {
-            await AuthService.login()
+            // 检查登录状态
+            const userId = AuthService.getUserId()
+            if (!userId) {
+               console.log('User not logged in, login first')
+               // 这里可以根据需求决定是否强制登录，或者跳转登录页
+               // 暂时尝试后台登录一次
+               await AuthService.login()
+            }
             refreshTeams()
         } catch (e) {
             console.error('Auto login failed', e)
@@ -178,6 +193,9 @@ export default function Team() {
                 members,
                 summary
              })
+             console.log('Cache saved:', cacheKey)
+          } else {
+            console.log('No userId found, cache not saved')
           }
           
           lastLoadedTeamId.current = teamId // Update Ref
