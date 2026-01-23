@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, Button, Image, Input } from '@tarojs/components'
+import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
 import { Skeleton, pxTransform } from '@nutui/nutui-react-taro'
 import { getMyTeams, getTeamStatus, getTeamDetail, joinTeam, createTeam } from '../../services/team'
 import EmptyState from './empty/index'
@@ -25,7 +25,10 @@ export default function Team() {
   const [selectedDay, setSelectedDay] = useState(getDayIndex(new Date())) 
   const [members, setMembers] = useState([])
   const [weeklyStats, setWeeklyStats] = useState([])
+  const [bestDayInfo, setBestDayInfo] = useState({ dayName: '暂无数据', count: 0, desc: '本周还没有足够的数据来预测黄金日' })
+  const [topWorker, setTopWorker] = useState(null)
   const [membersLoading, setMembersLoading] = useState(false)
+  const lastLoadedTeamId = useRef(null)
   
   // Modal States
   const [showJoinModal, setShowJoinModal] = useState(false)
@@ -37,23 +40,55 @@ export default function Team() {
 
   // 1. Initial Load (FSM Trigger)
   useDidShow(async () => {
-    // Reset to loading state on every show to ensure freshness, 
-    // but we can optimize this if needed. For now per requirement: "必须优先展示 Skeleton"
-    setViewState('loading')
-    
-    try {
-        await AuthService.login()
-        refreshTeams()
-    } catch (e) {
-        console.error('Auto login failed', e)
-        // If login fails, maybe show empty state or retry?
-        // For MVP, assume empty state
-        setViewState('empty')
+    // 优先尝试从缓存恢复
+    const cachedData = Taro.getStorageSync('team_detail_cache')
+    if (cachedData && cachedData.teamId) {
+        // 如果有缓存，先展示缓存内容
+        setViewState('active')
+        // 恢复上下文
+        const cachedTeam = { teamId: cachedData.teamId, name: cachedData.baseInfo?.name || 'My Team' }
+        setCurrentTeam(cachedTeam)
+        lastLoadedTeamId.current = cachedData.teamId // 标记缓存已加载
+        
+        // 恢复数据
+        updateMembersList(cachedData.members || [])
+        setWeeklyStats(cachedData.summary?.weeklyTrend || [])
+        setTopWorker(cachedData.summary?.topWorker || null)
+        if (cachedData.summary?.bestDay) {
+            const { bestDay } = cachedData.summary
+            setBestDayInfo({
+                dayName: bestDay.dayName,
+                count: bestDay.count,
+                desc: bestDay.count > 0 
+                    ? `本周${bestDay.dayName}最热闹，有${bestDay.count}位小伙伴在办公室, 线下活动约起来！`
+                    : '本周还没有足够的数据来预测黄金日'
+            })
+        }
+        
+        // 静默刷新（不显示loading）
+        // 只有当缓存的ID和当前页面逻辑需要的ID一致时，才考虑静默刷新
+        // 这里我们可以简单地总是尝试静默刷新以保持数据最新，但避免了loading闪烁
+        try {
+            await AuthService.login()
+            refreshTeams(true) // silent mode
+        } catch (e) {
+            console.error('Silent refresh failed', e)
+        }
+    } else {
+        // 无缓存，走常规流程
+        setViewState('loading')
+        try {
+            await AuthService.login()
+            refreshTeams()
+        } catch (e) {
+            console.error('Auto login failed', e)
+            setViewState('empty')
+        }
     }
   })
 
   // 2. Fetch Teams & Decide State
-  const refreshTeams = async () => {
+  const refreshTeams = async (silent = false) => {
     try {
       const teams = await getMyTeams()
       setMyTeams(teams)
@@ -71,6 +106,14 @@ export default function Team() {
         setCurrentTeam(targetTeam)
         Taro.setStorageSync('last_team_id', targetTeam.teamId)
         
+        // Optimization: Prevent redundant fetch if ID hasn't changed
+        // 如果不是静默刷新（即用户显式操作或首次加载），且目标ID与上次加载的一致，则跳过
+        if (!silent && lastLoadedTeamId.current === targetTeam.teamId) {
+            console.log('Skip redundant fetch for team:', targetTeam.teamId)
+            setViewState('active')
+            return
+        }
+
         // Fetch Detail for Initial Load
         await fetchTeamDetail(targetTeam.teamId)
 
@@ -83,8 +126,10 @@ export default function Team() {
       }
     } catch (err) {
       console.error('Fetch teams failed', err)
-      Taro.showToast({ title: '加载团队失败', icon: 'none' })
-      setViewState('empty') // Fallback
+      if (!silent) {
+        Taro.showToast({ title: '加载团队失败', icon: 'none' })
+        setViewState('empty') // Fallback
+      }
     }
   }
 
@@ -101,8 +146,43 @@ export default function Team() {
           // Update Weekly Stats
           setWeeklyStats(summary.weeklyTrend)
           
-          // Reset selection to today
-          setSelectedDay(todayIndex)
+          // Update Best Day
+          if (summary.bestDay && summary.bestDay.count > 0) {
+            setBestDayInfo({
+                dayName: summary.bestDay.dayName,
+                count: summary.bestDay.count,
+                desc: `本周${summary.bestDay.dayName}最热闹，有${summary.bestDay.count}位小伙伴在办公室, 线下活动约起来！`
+            })
+          } else {
+             setBestDayInfo({ dayName: '暂无数据', count: 0, desc: '大家似乎都很喜欢远程办公呢' })
+          }
+
+          // Update Top Worker
+          setTopWorker(summary.topWorker)
+          
+          // Cache Data
+          Taro.setStorageSync('team_detail_cache', {
+              teamId,
+              baseInfo: res.baseInfo,
+              members,
+              summary
+          })
+          
+          lastLoadedTeamId.current = teamId // Update Ref
+          
+          // Reset selection to today ONLY if not manually selected
+          // 逻辑优化：如果用户从未手动选择过（selectedDay 仍为初始值或 null），或者需要强制重置，才重置为 todayIndex。
+          // 但这里的需求是：“如果已经选中了某个bar，不应该恢复到当天”。
+          // 我们可以通过一个 ref 来记录用户是否手动交互过，或者更简单地：
+          // 每次 fetchDetail 后，保持当前的 selectedDay 不变。
+          // 只有当 selectedDay 与当前周不匹配时（例如跨周了），才重置。
+          // 鉴于目前逻辑都是基于本周的 index (0-6)，只要还在本周内，index 就是有效的。
+          // 所以直接注释掉重置逻辑，或者只在初始化时设置一次。
+          
+          // 如果当前 selectedDay 无效（比如刚初始化），则设为 todayIndex
+          // 但由于 state 初始化时已经设为 todayIndex，所以这里其实可以完全移除重置逻辑，
+          // 让 selectedDay 保持当前状态。
+          // setSelectedDay(todayIndex) 
       } catch (err) {
           console.error('Fetch team detail failed', err)
       }
@@ -153,7 +233,6 @@ export default function Team() {
       case 'office': return '来了'
       case 'remote': return '远程'
       case 'leave': return '请假'
-      case 'unset': return '未打卡'
       default: return '未知'
     }
   }
@@ -163,7 +242,7 @@ export default function Team() {
       case 'office': return 'Office'
       case 'remote': return 'Remote'
       case 'leave': return 'Leave'
-      default: return 'Unset'
+      default: return 'office'
     }
   }
 
@@ -302,6 +381,63 @@ export default function Team() {
                 </View>
               </View>
           </View>
+
+          {/* 2. Team Square (Swiper) */}
+          <Swiper
+            className='team-square-swiper'
+            indicatorDots={true}
+            indicatorColor='rgba(255, 255, 255, 0.5)'
+            indicatorActiveColor='#fff'
+            circular
+            autoplay
+            interval={5000}
+            duration={500}
+          >
+            {/* Slide 1: Best Day */}
+            <SwiperItem>
+                <View className='best-day-card'>
+                    <View className='card-content'>
+                    <View className='tag'>
+                        <Text className='icon'>🏆</Text>
+                        <Text>团队黄金日推荐</Text>
+                    </View>
+                    <Text className='main-date'>{bestDayInfo.dayName}</Text>
+                    <Text className='desc'>{bestDayInfo.desc}</Text>
+                    </View>
+                    <View className='bg-decoration'>🍚</View>
+                </View>
+            </SwiperItem>
+
+            {/* Slide 2: Top Worker */}
+            <SwiperItem>
+                <View className='best-day-card top-worker-card'>
+                    <View className='card-content'>
+                        <View className='tag'>
+                            <Text className='icon'>👑</Text>
+                            <Text>本周上班王</Text>
+                        </View>
+                        {topWorker ? (
+                            <>
+                                <View className='winner-info'>
+                                    <Image 
+                                        className='winner-avatar' 
+                                        src={topWorker.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + topWorker.name} 
+                                    />
+                                    <Text className='main-date'>{topWorker.name}</Text>
+                                </View>
+                                <Text className='desc'>本周累计到办公室 {topWorker.count} 天，是团队的定海神针！</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text className='main-date'>虚位以待</Text>
+                                <Text className='desc'>本周还没有人来办公室打卡哦</Text>
+                            </>
+                        )}
+                    </View>
+                    <View className='bg-decoration'>👑</View>
+                </View>
+            </SwiperItem>
+          </Swiper>
 
           {/* 3. Week Distribution (Simplified) */}
           <View className='section-container'>

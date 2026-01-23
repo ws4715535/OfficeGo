@@ -98,8 +98,16 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     }
 }
 
-/* 2. Best Day Card */
+/* 2. Team Square (Swiper) */
+.team-square-swiper {
+  height: 320rpx; // Adjust based on card height
+  width: 100%;
+}
+
+/* Best Day Card (Used as base for cards) */
 .best-day-card {
+  height: 100%; // Fill swiper item
+  box-sizing: border-box; // Ensure padding is included
   background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); // Orange gradient
   border-radius: 40rpx;
   padding: 40rpx;
@@ -114,6 +122,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;
+    height: 100%; // Fill container
   }
 
   .tag {
@@ -149,6 +158,31 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     opacity: 0.1;
     z-index: 1;
     transform: rotate(-15deg);
+  }
+
+  /* Top Worker Card Variant */
+  &.top-worker-card {
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); // Indigo/Purple gradient
+    box-shadow: 0 20rpx 40rpx -10rpx rgba(99, 102, 241, 0.4);
+
+    .winner-info {
+        display: flex;
+        align-items: center;
+        gap: 24rpx;
+        margin: $spacing-xs 0;
+
+        .winner-avatar {
+            width: 88rpx;
+            height: 88rpx;
+            border-radius: 50%;
+            border: 4rpx solid rgba(255,255,255,0.4);
+        }
+
+        .main-date {
+            margin: 0; // Reset margin for flex layout
+            font-size: 48rpx; // Slightly smaller for name
+        }
+    }
   }
 }
 

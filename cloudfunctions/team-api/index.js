@@ -262,7 +262,25 @@ async function getTeamDetail(myUserId, { teamId }) {
     })
     .end();
 
-  const [todayRes, weekStatsRes] = await Promise.all([todayStatusPromise, weekStatsPromise]);
+  // 2.1 获取本周 Top Worker (上班王)
+  const topWorkerPromise = db.collection('attendance_records')
+    .aggregate()
+    .match({
+      _openid: _.in(memberIds),
+      date: _.in(weekDates),
+      status: 'office'
+    })
+    .group({
+      _id: '$_openid',
+      count: $.sum(1)
+    })
+    .sort({
+      count: -1
+    })
+    .limit(1)
+    .end();
+
+  const [todayRes, weekStatsRes, topWorkerRes] = await Promise.all([todayStatusPromise, weekStatsPromise, topWorkerPromise]);
   
   // 安全获取数据
   const todayMembers = (todayRes && todayRes.data && todayRes.data.members) ? todayRes.data.members : [];
@@ -302,6 +320,20 @@ async function getTeamDetail(myUserId, { teamId }) {
     }
   });
 
+  // 处理 Top Worker
+  let topWorker = null;
+  if (topWorkerRes.list.length > 0) {
+    const winner = topWorkerRes.list[0];
+    const winnerInfo = members.find(m => m.userId === winner._id);
+    if (winnerInfo) {
+      topWorker = {
+        name: winnerInfo.nickName || '神秘人',
+        avatar: winnerInfo.avatarUrl || '',
+        count: winner.count
+      };
+    }
+  }
+
   return {
     code: 200,
     data: {
@@ -315,6 +347,7 @@ async function getTeamDetail(myUserId, { teamId }) {
       summary: {
         weeklyTrend: weeklyStats, // 包含 ratio, officeCount 等
         bestDay: bestDay,
+        topWorker: topWorker,
         totalMembers: totalMembers
       }
     }
