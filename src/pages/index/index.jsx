@@ -114,11 +114,11 @@ export default function Index() {
                      key={i} 
                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} 
                      className='avatar' 
-                     style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0, opacity: 0.6, filter: 'grayscale(100%)' }} 
+                     style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0, opacity: 1, filter: 'grayscale(100%)' }} 
                    />
                 ))}
               </View>
-              <Text className='banner-text'>加入一个团队吧！</Text>
+              <Text className='banner-text'>加入团队，看看他们来了么！</Text>
             </>
           )}
           
@@ -175,7 +175,7 @@ export default function Index() {
         <View className='details-card'>
           <View className='detail-row'>
             <View className='icon-box blue'>           
-           <Image src={timeIcon} style={{ width: '40rpx', height: '40rpx' }} />
+           <Image src={timeIcon} style={{ width: '48rpx', height: '48rpx' }} />
             </View>
             <Text className='row-label'>本月有效工作日</Text>
             <View className='row-value'>
@@ -200,7 +200,7 @@ export default function Index() {
 
           <View className='detail-row'>
             <View className='icon-box green'>
-              <Image src={targetIcon} style={{ width: '44rpx', height: '44rpx' }} />
+              <Image src={targetIcon} style={{ width: '32rpx', height: '32rpx' }} />
             </View>
             <Text className='row-label'>本月总目标</Text>
             <Text className='row-value'>{stats.targetDays} 天</Text>
