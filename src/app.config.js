@@ -10,7 +10,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'Office Day Tracker',
+    navigationBarTitleText: '团队',
     navigationBarTextStyle: 'black'
   },
   tabBar: {
@@ -32,7 +32,7 @@ export default defineAppConfig({
       },
       {
         pagePath: 'pages/calendar/index',
-        text: '日历',
+        text: '记录',
         iconPath: 'assets/tabbar/calendar.png',
         selectedIconPath: 'assets/tabbar/calendar-active.png'
       }

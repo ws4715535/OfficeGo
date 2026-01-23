@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
-import { Skeleton, pxTransform } from '@nutui/nutui-react-taro'
+import { Skeleton, pxTransform, PullToRefresh } from '@nutui/nutui-react-taro'
 import { getMyTeams, getTeamStatus, getTeamDetail, joinTeam, createTeam } from '../../services/team'
 import EmptyState from './empty/index'
 import AuthService from '../../services/auth'
@@ -41,7 +41,15 @@ export default function Team() {
   // 1. Initial Load (FSM Trigger)
   useDidShow(async () => {
     // 优先尝试从缓存恢复
-    const cachedData = Taro.getStorageSync('team_detail_cache')
+    const userId = Taro.getStorageSync('userId')
+    const lastTeamId = Taro.getStorageSync('last_team_id')
+    let cachedData = null
+
+    if (userId && lastTeamId) {
+       const cacheKey = `team_detail_${userId}_${lastTeamId}`
+       cachedData = Taro.getStorageSync(cacheKey)
+    }
+
     if (cachedData && cachedData.teamId) {
         // 如果有缓存，先展示缓存内容
         setViewState('active')
@@ -161,12 +169,16 @@ export default function Team() {
           setTopWorker(summary.topWorker)
           
           // Cache Data
-          Taro.setStorageSync('team_detail_cache', {
-              teamId,
-              baseInfo: res.baseInfo,
-              members,
-              summary
-          })
+          const userId = Taro.getStorageSync('userId')
+          if (userId) {
+             const cacheKey = `team_detail_${userId}_${teamId}`
+             Taro.setStorageSync(cacheKey, {
+                teamId,
+                baseInfo: res.baseInfo,
+                members,
+                summary
+             })
+          }
           
           lastLoadedTeamId.current = teamId // Update Ref
           
@@ -218,7 +230,7 @@ export default function Team() {
           id: m.userId,
           name: m.name,
           avatar: m.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + m.name,
-          status: m.status.toUpperCase(),
+          status: (m.status || 'unknown').toUpperCase(),
           statusText: getStatusText(m.status),
           tagText: getTagText(m.status),
           isMe: m.isMe,
@@ -361,9 +373,42 @@ export default function Team() {
     return `${formatDate(monday)}-${formatDate(sunday)}`
   }
 
+  const handleRefresh = async () => {
+    return new Promise(async (resolve) => {
+      try {
+        // Clear cache and ref to force full reload
+        const userId = Taro.getStorageSync('userId')
+        if (currentTeam && userId) {
+            Taro.removeStorageSync(`team_detail_${userId}_${currentTeam.teamId}`)
+        }
+        lastLoadedTeamId.current = null
+        
+        // Reset day selection to today
+        setSelectedDay(todayIndex)
+        
+        // Trigger refresh
+        await refreshTeams(true)
+        
+        Taro.showToast({ title: '刷新成功', icon: 'success' })
+        resolve('done')
+      } catch (e) {
+        console.error('Refresh failed', e)
+        Taro.showToast({ title: '刷新失败', icon: 'none' })
+        resolve('done')
+      }
+    })
+  }
+
   const renderActive = () => {
       const weekLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
       return (
+        <PullToRefresh
+          style={{
+            minHeight: '100vh',
+            backgroundColor: 'transparent'
+          }}
+          onRefresh={handleRefresh}
+        >
         <View className='team-page'>
           {/* 1. Header with Team Switcher */}
           <View className='page-header'>
@@ -376,7 +421,7 @@ export default function Team() {
                   <Image src={addIcon} className='icon' />
                   <Text className='label'>加入</Text>
                 </View>
-                <View className='action-btn icon-only' onClick={() => Taro.navigateTo({ url: `/pages/team/settings/index?id=${currentTeam?.teamId}` })}>
+                <View className='action-btn icon-only' onClick={() => Taro.navigateTo({ url: `/pages/team/settings/index?teamId=${currentTeam?.teamId}` })}>
                   <Image src={settingIcon} className='icon' />
                 </View>
               </View>
@@ -543,6 +588,7 @@ export default function Team() {
 
           {renderModals()}
         </View>
+        </PullToRefresh>
       )
   }
 

@@ -17,6 +17,12 @@ const AuthService = {
         data: { userInfo }
       })
       console.log('AuthService Login Result:', res)
+      
+      // Cache userId (openid) for global usage
+      if (res.result && res.result.openid) {
+        Taro.setStorageSync('userId', res.result.openid)
+      }
+      
       return res.result
     } catch (error) {
       console.error('AuthService Login Error:', error)

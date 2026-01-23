@@ -24,3 +24,7 @@ export const joinTeam = (inviteCode, userInfo) => callTeamApi('joinTeam', { invi
 export const getMyTeams = () => callTeamApi('getMyTeams');
 export const getTeamStatus = (teamId, dateStr) => callTeamApi('getTeamStatus', { teamId, dateStr });
 export const getTeamDetail = (teamId) => callTeamApi('getTeamDetail', { teamId });
+export const updateTeamName = (teamId, name) => callTeamApi('updateTeam', { teamId, name });
+export const removeMember = (teamId, removeMemberId) => callTeamApi('updateTeam', { teamId, removeMemberId });
+export const leaveTeam = (teamId) => callTeamApi('leaveTeam', { teamId });
+export const deleteTeam = (teamId) => callTeamApi('deleteTeam', { teamId });

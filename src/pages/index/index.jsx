@@ -107,7 +107,19 @@ export default function Index() {
               </View>
             </>
           ) : (
-            <Text className='banner-text'>加入一个团队吧！</Text>
+            <>
+              <View className='avatars'>
+                {['A', 'B', 'C'].map((_, i) => (
+                   <Image 
+                     key={i} 
+                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} 
+                     className='avatar' 
+                     style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0, opacity: 0.6, filter: 'grayscale(100%)' }} 
+                   />
+                ))}
+              </View>
+              <Text className='banner-text'>加入一个团队吧！</Text>
+            </>
           )}
           
           <View className='arrow-btn'>

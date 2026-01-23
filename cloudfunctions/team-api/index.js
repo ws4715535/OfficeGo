@@ -40,6 +40,15 @@ exports.main = async (event, context) => {
       case 'getTeamDetail':
         result = await getTeamDetail(myOpenId, payload); // 新增：首屏大管家
         break;
+      case 'updateTeam':
+        result = await updateTeam(myOpenId, payload);
+        break;
+      case 'leaveTeam':
+        result = await leaveTeam(myOpenId, payload);
+        break;
+      case 'deleteTeam':
+        result = await deleteTeam(myOpenId, payload);
+        break;
       default:
         result = { code: 400, msg: 'Unknown action' };
     }
@@ -197,6 +206,7 @@ async function getTeamStatus(myUserId, { teamId, dateStr }) {
         userId: m.userId,
         name: m.nickName || 'Unknown',
         avatar: m.avatarUrl || '',
+        role: m.role || 'member',
         status: status,
         isMe: m.userId === myUserId
       });
@@ -238,8 +248,8 @@ async function getTeamDetail(myUserId, { teamId }) {
   // 并行查询：今日详情 + 本周统计
   const todayStr = now.toISOString().split('T')[0];
   
-  // 1. 获取今日状态 (复用 getTeamStatus 逻辑)
-  const todayStatusPromise = getTeamStatus(myUserId, { teamId, dateStr: todayStr });
+  // 1. (已移除 todayStatusPromise，改为直接查询)
+  // const todayStatusPromise = getTeamStatus(myUserId, { teamId, dateStr: todayStr });
 
   // 2. 获取本周统计
   // 为了性能，这里我们只查 officeCount，不查具体人
@@ -248,6 +258,59 @@ async function getTeamDetail(myUserId, { teamId }) {
   const members = membersRes.data;
   const memberIds = members.map(m => m.userId);
   const totalMembers = members.length;
+
+  // 1. 获取今日状态
+  // 这里逻辑有问题：todayStatusPromise 调用 getTeamStatus 时只查询了“attendance_records”，
+  // 但 getTeamStatus 的逻辑是：先查 team_members，然后查 attendance，然后 filter 掉没有 attendance 的人？
+  // 让我们仔细看下 getTeamStatus：
+  // resultList.push(...) 是在 if (status) 块里的。这意味着只有今天打了卡（有记录）的人才会被返回！
+  // 需求：getTeamDetail 需要返回“团队成员列表”，无论他今天是否打卡。
+
+  // 修复：重写这部分逻辑，不依赖 getTeamStatus，或者修改 getTeamStatus。
+  // 鉴于 getTeamStatus 是给“今日状态”用的，可能确实只需要显示有状态的人（或者前端处理了？）。
+  // 但 Team Settings 需要完整的成员列表。
+
+  // 重新获取今日考勤，并合并到所有成员列表中
+  const attendanceRes = await db.collection('attendance_records')
+    .where({
+      _openid: _.in(memberIds),
+      date: todayStr
+    })
+    .get();
+
+  const attendanceMap = {};
+  attendanceRes.data.forEach(r => {
+    attendanceMap[r._openid] = r.status;
+  });
+
+  const allMembersWithStatus = members.map(m => {
+    const status = attendanceMap[m.userId] || null; // 没打卡就是 null
+    return {
+        userId: m.userId,
+        name: m.nickName || 'Unknown',
+        avatar: m.avatarUrl || '',
+        role: m.role || 'member',
+        status: status, // 前端可能需要处理 null
+        isMe: m.userId === myUserId
+    };
+  });
+  
+  // 排序：有状态的在前，admin在前
+  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2 };
+  allMembersWithStatus.sort((a, b) => {
+      // 1. 优先自己
+      if (a.isMe && !b.isMe) return -1;
+      if (!a.isMe && b.isMe) return 1;
+
+      // 2. Admin 优先
+      if (a.role === 'admin' && b.role !== 'admin') return -1;
+      if (a.role !== 'admin' && b.role === 'admin') return 1;
+
+      // 3. 有状态优先
+      const scoreA = sortScore[a.status] || 0;
+      const scoreB = sortScore[b.status] || 0;
+      return scoreB - scoreA;
+  });
 
   const weekStatsPromise = db.collection('attendance_records')
     .aggregate()
@@ -280,10 +343,10 @@ async function getTeamDetail(myUserId, { teamId }) {
     .limit(1)
     .end();
 
-  const [todayRes, weekStatsRes, topWorkerRes] = await Promise.all([todayStatusPromise, weekStatsPromise, topWorkerPromise]);
+  const [weekStatsRes, topWorkerRes] = await Promise.all([weekStatsPromise, topWorkerPromise]);
   
   // 安全获取数据
-  const todayMembers = (todayRes && todayRes.data && todayRes.data.members) ? todayRes.data.members : [];
+  const todayMembers = allMembersWithStatus;
   const weekStatsList = (weekStatsRes && weekStatsRes.list) ? weekStatsRes.list : [];
 
   console.log(`[TeamAPI] getTeamDetail Fetched Data: todayCount=${todayMembers.length}, weekStatsCount=${weekStatsList.length}`);
@@ -338,9 +401,11 @@ async function getTeamDetail(myUserId, { teamId }) {
     code: 200,
     data: {
       baseInfo: {
+        teamId: teamInfo._id, // Add teamId here
         name: teamInfo.name,
         inviteCode: teamInfo.inviteCode,
         ownerId: teamInfo.ownerId,
+        createdAt: teamInfo.createdAt, // 新增：创建时间
         updatedAt: teamInfo.updatedAt
       },
       members: todayMembers, // 今日成员列表（含状态）
@@ -352,4 +417,98 @@ async function getTeamDetail(myUserId, { teamId }) {
       }
     }
   };
+}
+
+// 6. 更新团队信息 (修改名称/移除成员)
+async function updateTeam(userId, { teamId, name, removeMemberId }) {
+  const now = new Date();
+
+  // 1. 权限检查：只有管理员/创建者可以操作
+  const adminCheck = await db.collection('team_members').where({
+    teamId,
+    userId,
+    role: 'admin'
+  }).count();
+
+  if (adminCheck.total === 0) {
+    return { code: 403, msg: '只有管理员有权修改团队设置' };
+  }
+
+  // 场景 A：修改团队名称
+  if (name) {
+    await db.collection('teams').doc(teamId).update({
+      data: {
+        name,
+        updatedAt: now // 响应你对数据更新追踪的需求
+      }
+    });
+    return { code: 200, msg: '团队名称更新成功' };
+  }
+
+  // 场景 B：删除/踢出成员
+  if (removeMemberId) {
+    if (removeMemberId === userId) {
+      return { code: 400, msg: '不能删除自己（请使用退出团队功能）' };
+    }
+    
+    await db.collection('team_members').where({
+      teamId,
+      userId: removeMemberId
+    }).remove();
+
+    return { code: 200, msg: '成员已移除' };
+  }
+
+  return { code: 400, msg: '未指定更新内容' };
+}
+
+// 7. 退出团队
+async function leaveTeam(userId, { teamId }) {
+  // 1. 检查是否是 Owner
+  const teamRes = await db.collection('teams').doc(teamId).get();
+  const team = teamRes.data;
+  
+  if (team.ownerId === userId) {
+    return { code: 400, msg: '创建者不能退出团队，请选择解散团队' };
+  }
+
+  // 2. 移除成员记录
+  const removeRes = await db.collection('team_members').where({
+    teamId,
+    userId
+  }).remove();
+
+  if (removeRes.stats.removed > 0) {
+    return { code: 200, msg: '已退出团队' };
+  } else {
+    return { code: 400, msg: '你不在该团队中' };
+  }
+}
+
+// 8. 解散团队
+async function deleteTeam(userId, { teamId }) {
+  // 1. 检查是否是 Owner
+  const teamRes = await db.collection('teams').doc(teamId).get();
+  const team = teamRes.data;
+  
+  if (team.ownerId !== userId) {
+    return { code: 403, msg: '只有创建者可以解散团队' };
+  }
+
+  const transaction = await db.startTransaction();
+  try {
+    // 2. 删除团队记录
+    await transaction.collection('teams').doc(teamId).remove();
+    
+    // 3. 删除所有成员记录
+    await transaction.collection('team_members').where({ teamId }).remove();
+    
+    // 4. (可选) 删除相关考勤记录? 暂时保留吧，或者也可以删。保留作为历史数据更好。
+    
+    await transaction.commit();
+    return { code: 200, msg: '团队已解散' };
+  } catch (e) {
+    await transaction.rollback();
+    return { code: 500, msg: '解散失败', error: e };
+  }
 }

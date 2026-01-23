@@ -1,4 +1,7 @@
 import Taro from '@tarojs/taro'
+import { init } from '@cloudbase/wx-cloud-client-sdk'
+
+let cloudbaseInstance = null
 
 export const initCloudBase = () => {
   if (!Taro.cloud) {
@@ -7,13 +10,20 @@ export const initCloudBase = () => {
   }
 
   // 1. Init Taro/WeChat Cloud
+  Taro.cloud.init({
+    env: "dev-2g131pqic0b2596c",
+    traceUser: true,
+  })
+
+  // 2. Init Client SDK
   try {
-    Taro.cloud.init({
-        env: "dev-2g131pqic0b2596c",
-        traceUser: true,
-    })
-    console.log('Taro Cloud Initialized')
+    cloudbaseInstance = init(Taro.cloud)
+    console.log('CloudBase Client SDK Initialized successfully')
   } catch (e) {
-      console.error('Taro Cloud Init Error:', e)
+    console.error('CloudBase Client SDK Init Failed:', e)
   }
+}
+
+export const getCloudbaseInstance = () => {
+  return cloudbaseInstance
 }

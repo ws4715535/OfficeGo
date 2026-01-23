@@ -194,7 +194,7 @@ export default function Settings() {
   return (
     <View className='settings-page'>
       {/* 0. 个人信息设置 */}
-      <Text className='section-title'>核心规则</Text>
+      <Text className='section-title'>个人信息</Text>
       <View className='config-card'>
         <View className='config-item profile-config'>
             <Button 

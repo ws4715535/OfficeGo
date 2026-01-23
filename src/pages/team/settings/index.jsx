@@ -1,7 +1,8 @@
 import { View, Text, Image, Button, Input } from '@tarojs/components'
 import React, { useState, useEffect } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
-import { getTeamSettings, leaveTeam } from '../../../services/mockTeamData'
+import dayjs from 'dayjs'
+import { getTeamDetail, updateTeamName, removeMember, leaveTeam, deleteTeam } from '../../../services/team'
 import deleteIcon from '../../../assets/delete.png'
 import './index.scss'
 
@@ -9,14 +10,84 @@ export default function TeamSettings() {
   const router = useRouter()
   const [teamInfo, setTeamInfo] = useState(null)
   
-  // Get teamId from params or default to t1
-  const teamId = router.params.teamId || 't1'
+  // Get teamId from params
+  const teamId = router.params.teamId
 
   useEffect(() => {
-    // Simulate API fetch
-    const data = getTeamSettings(teamId)
-    setTeamInfo(data)
+    loadTeamData()
   }, [teamId])
+
+  const loadTeamData = async () => {
+    console.log('Loading team data for teamId:', teamId)
+    // 1. Get UserId
+    const userId = Taro.getStorageSync('userId')
+    
+    // 2. Try Cache
+    let cached = null
+    const cacheKey = userId ? `team_detail_${userId}_${teamId}` : null
+    
+    if (cacheKey) {
+        cached = Taro.getStorageSync(cacheKey)
+    }
+
+    if (cached && cached.baseInfo) {
+       updateStateFromData(cached)
+    } else {
+      // 3. Fetch from API if no cache
+      Taro.showLoading({ title: '加载中...' })
+      try {
+         const res = await getTeamDetail(teamId)
+         
+         // Update Cache
+         const { members, summary } = res
+         const newData = {
+              teamId,
+              baseInfo: res.baseInfo,
+              members,
+              summary
+         }
+         
+         if (cacheKey) {
+             Taro.setStorageSync(cacheKey, newData)
+         }
+
+         updateStateFromData(newData)
+         Taro.hideLoading()
+      } catch (err) {
+         Taro.hideLoading()
+         Taro.showToast({ title: '数据加载失败', icon: 'none' })
+         setTimeout(() => Taro.navigateBack(), 1500)
+      }
+    }
+  }
+
+  const updateStateFromData = (data) => {
+      const { baseInfo, members, summary } = data
+      
+      // 找到当前用户的角色
+      const myInfo = members.find(m => m.isMe)
+      const myRole = myInfo ? (myInfo.role || 'member') : 'member'
+      
+      // 格式化成员列表
+      const formattedMembers = members.map(m => ({
+        id: m.userId, 
+        name: m.name,
+        avatar: m.avatar,
+        role: m.role || 'member',
+        isMe: m.isMe
+      }))
+
+      setTeamInfo({
+        id: teamId,
+        name: baseInfo.name,
+        inviteCode: baseInfo.inviteCode,
+        createdAt: dayjs(baseInfo.createdAt).format('YYYY年MM月DD日'),
+        memberCount: summary.totalMembers,
+        currentUserRole: myRole,
+        ownerId: baseInfo.ownerId,
+        members: formattedMembers
+      })
+  }
 
   const handleCopyCode = () => {
     Taro.setClipboardData({
@@ -28,16 +99,28 @@ export default function TeamSettings() {
   const handleRename = () => {
     if (teamInfo.currentUserRole !== 'admin') return
 
-    // In Taro/WeChat, we usually use a modal with input or navigate to a form
-    // For MVP, we'll use showModal with editable: true (if supported) or just mock it
     Taro.showModal({
       title: '修改团队名称',
       editable: true,
       placeholderText: teamInfo.name,
-      success: (res) => {
-        if (res.confirm && res.content) {
-          setTeamInfo(prev => ({ ...prev, name: res.content }))
-          Taro.showToast({ title: '修改成功', icon: 'success' })
+      success: async (res) => {
+        if (res.confirm && res.content && res.content !== teamInfo.name) {
+          Taro.showLoading({ title: '修改中...' })
+          try {
+            await updateTeamName(teamId, res.content)
+            
+            Taro.hideLoading()
+            Taro.showToast({ title: '修改成功', icon: 'success' })
+            // 清除缓存，强制主页刷新
+            const userId = Taro.getStorageSync('userId')
+            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            // 更新本地状态
+            setTeamInfo(prev => ({ ...prev, name: res.content }))
+          } catch (err) {
+            console.error('Rename team error:', err)
+            Taro.hideLoading()
+            Taro.showToast({ title: err.message || '修改失败', icon: 'none' })
+          }
         }
       }
     })
@@ -48,14 +131,27 @@ export default function TeamSettings() {
       title: '移除成员',
       content: `确定要将 ${member.name} 移出团队吗？`,
       confirmColor: '#FF4D4F',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          setTeamInfo(prev => ({
-            ...prev,
-            members: prev.members.filter(m => m.id !== member.id),
-            memberCount: prev.memberCount - 1
-          }))
-          Taro.showToast({ title: '已移除', icon: 'success' })
+          Taro.showLoading({ title: '移除中...' })
+          try {
+            await removeMember(teamId, member.id)
+            
+            Taro.hideLoading()
+            Taro.showToast({ title: '已移除', icon: 'success' })
+            // 清除缓存
+            const userId = Taro.getStorageSync('userId')
+            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            // 更新本地状态
+            setTeamInfo(prev => ({
+              ...prev,
+              members: prev.members.filter(m => m.id !== member.id),
+              memberCount: prev.memberCount - 1
+            }))
+          } catch (err) {
+            Taro.hideLoading()
+            Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
+          }
         }
       }
     })
@@ -66,11 +162,21 @@ export default function TeamSettings() {
       title: '退出团队',
       content: '确认退出该团队？退出后将无法查看团队数据。',
       confirmColor: '#FF4D4F',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          leaveTeam(teamId)
-          Taro.showToast({ title: '已退出', icon: 'success' })
-          setTimeout(() => Taro.navigateBack(), 1500)
+          Taro.showLoading({ title: '退出中...' })
+          try {
+            await leaveTeam(teamId)
+            
+            Taro.hideLoading()
+            Taro.showToast({ title: '已退出', icon: 'success' })
+            const userId = Taro.getStorageSync('userId')
+            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 1500)
+          } catch (err) {
+            Taro.hideLoading()
+            Taro.showToast({ title: err.message || '退出失败', icon: 'none' })
+          }
         }
       }
     })
@@ -79,12 +185,23 @@ export default function TeamSettings() {
   const handleDissolveTeam = () => {
     Taro.showModal({
       title: '解散团队',
-      content: '解散团队后，所有成员将被移除，相关数据将被删除，是否继续？',
+      content: '解散团队后，所有成员将被移除，相关数据将被删除，且不可恢复！是否继续？',
       confirmColor: '#FF4D4F',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          Taro.showToast({ title: '团队已解散', icon: 'success' })
-          setTimeout(() => Taro.navigateBack(), 1500)
+           Taro.showLoading({ title: '解散中...' })
+          try {
+            await deleteTeam(teamId)
+            
+            Taro.hideLoading()
+            Taro.showToast({ title: '团队已解散', icon: 'success' })
+            const userId = Taro.getStorageSync('userId')
+            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 1500)
+          } catch (err) {
+            Taro.hideLoading()
+            Taro.showToast({ title: err.message || '解散失败', icon: 'none' })
+          }
         }
       }
     })
