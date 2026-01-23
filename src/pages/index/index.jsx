@@ -9,7 +9,7 @@ import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
 import { useDashboard } from '../../hooks/useDashboard'
-import { TEAMS, getMembersForDay } from '../../services/mockTeamData'
+import { getMyTeams, getTeamStatus } from '../../services/team'
 import AuthService from '../../services/auth'
 import './index.scss'
 
@@ -22,7 +22,7 @@ export default function Index() {
   })
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
 
-  useDidShow(() => {
+  useDidShow(async () => {
     // Check Onboarding
     const isOnboarded = Taro.getStorageSync('isOnboarded')
     if (!isOnboarded) {
@@ -40,20 +40,27 @@ export default function Index() {
     }
 
     // Check if user has any teams
-    const hasTeam = TEAMS.length > 0
-    
-    if (hasTeam) {
-      const today = new Date().getDay() - 1 // 0=Mon
-      // Use currentTeam (first one) for MVP
-      const members = getMembersForDay(TEAMS[0].id, today)
-      const office = members.filter(m => m.status === 'OFFICE')
-      
-      setTeamState({
-        hasTeam: true,
-        officeMembers: office,
-        totalOffice: office.length
-      })
-    } else {
+    try {
+      const teams = await getMyTeams()
+      if (teams && teams.length > 0) {
+        // Fetch status for the first team
+        const today = new Date().toISOString().split('T')[0]
+        const res = await getTeamStatus(teams[0].teamId, today)
+        const members = res.members || []
+        
+        const office = members.filter(m => m.status === 'office')
+        
+        setTeamState({
+          hasTeam: true,
+          officeMembers: office,
+          totalOffice: office.length
+        })
+      } else {
+        setTeamState({ hasTeam: false, officeMembers: [], totalOffice: 0 })
+      }
+    } catch (err) {
+      console.error('Failed to load team data on dashboard', err)
+      // Fallback to empty state
       setTeamState({ hasTeam: false, officeMembers: [], totalOffice: 0 })
     }
   })

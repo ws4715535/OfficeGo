@@ -1,0 +1,9 @@
+{
+  "name": "team-api",
+  "version": "1.0.0",
+  "description": "Team API",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

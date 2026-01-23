@@ -22,24 +22,32 @@ exports.main = async (event, context) => {
   const wxContext = cloud.getWXContext()
   const openid = wxContext.OPENID
   const { action, data } = event
+  console.log(`[AttendanceAPI] Action: ${action}`, data);
 
   if (!openid) {
     return { code: 401, message: 'Unauthorized' }
   }
 
   try {
+    let result;
     switch (action) {
       case 'upsertRecord':
-        return await upsertRecord(openid, data || {})
+        result = await upsertRecord(openid, data || {})
+        break;
       case 'getTodayStatus':
-        return await getTodayStatus(openid)
+        result = await getTodayStatus(openid)
+        break;
       case 'getMonthlyStats':
-        return await getMonthlyStats(openid, data || {})
+        result = await getMonthlyStats(openid, data || {})
+        break;
       case 'deleteRecord':
-        return await deleteRecord(openid, data || {})
+        result = await deleteRecord(openid, data || {})
+        break;
       default:
-        return { code: 400, message: 'Unknown action' }
+        result = { code: 400, message: 'Unknown action' }
     }
+    console.log(`[AttendanceAPI] Success: ${action}`, result);
+    return result;
   } catch (err) {
     console.error(`[${action}] Error:`, err)
     return { code: 500, message: err.message, error: err }
