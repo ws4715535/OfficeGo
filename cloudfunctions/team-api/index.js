@@ -286,14 +286,17 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   const dateList = []; // 用于趋势图
 
   if (dimension === 'week') {
-    // 计算本周周一至周日
-    const day = now.getDay(); 
-    const diff = now.getDate() - (day === 0 ? 6 : day - 1); 
+    // 计算本周周日 (Start) 至 周六 (End) - No, standard calendar is Sun-Sat or Mon-Sun?
+    // Request: "OfficeDay趋势的显示逻辑应该和日历保持一致，周日开始的。"
+    // Standard Calendar: Sunday is 0.
+    
+    const day = now.getDay(); // 0 (Sun) to 6 (Sat)
+    const diff = now.getDate() - day; // Go back to Sunday
     startDate = new Date(now);
-    startDate.setDate(diff); // Monday
+    startDate.setDate(diff); // Sunday
     startDate.setHours(0,0,0,0);
     
-    // Generate 7 days
+    // Generate 7 days (Sun to Sat)
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
@@ -354,7 +357,7 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   // 4. 计算 Best Day
   let bestDay = { dayName: '', count: 0 };
   let maxCount = -1;
-  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']; // Sun-Sat
   trend.forEach((stat, index) => {
     if (stat.officeCount > maxCount) {
       maxCount = stat.officeCount;

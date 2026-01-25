@@ -39,12 +39,11 @@ export default function TeamSettings() {
          const res = await getTeamDetail(teamId)
          
          // Update Cache
-         const { members, summary } = res
+         const { members } = res
          const newData = {
               teamId,
               baseInfo: res.baseInfo,
-              members,
-              summary
+              members
          }
          
          if (cacheKey) {
@@ -62,7 +61,7 @@ export default function TeamSettings() {
   }
 
   const updateStateFromData = (data) => {
-      const { baseInfo, members, summary } = data
+      const { baseInfo, members } = data
       
       // 找到当前用户的角色
       const myInfo = members.find(m => m.isMe)
@@ -82,7 +81,7 @@ export default function TeamSettings() {
         name: baseInfo.name,
         inviteCode: baseInfo.inviteCode,
         createdAt: dayjs(baseInfo.createdAt).format('YYYY年MM月DD日'),
-        memberCount: summary.totalMembers,
+        memberCount: members.length, // summary is deprecated in getTeamDetail
         currentUserRole: myRole,
         ownerId: baseInfo.ownerId,
         members: formattedMembers

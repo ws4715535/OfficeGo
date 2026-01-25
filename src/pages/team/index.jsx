@@ -21,13 +21,13 @@ export default function Team() {
   // Date Logic
   const getDayIndex = (date) => {
     const day = date.getDay()
-    return day === 0 ? 6 : day - 1
+    return day // 0 (Sun) - 6 (Sat)
   }
 
   const getStartOfWeek = (date) => {
     const d = new Date(date)
     const day = d.getDay()
-    const diff = d.getDate() - (day === 0 ? 6 : day - 1)
+    const diff = d.getDate() - day // Go back to Sunday (0)
     d.setDate(diff)
     return d
   }
@@ -450,13 +450,7 @@ export default function Team() {
   }
 
   const renderActive = () => {
-      // 动态生成周标签，支持补班
-      const weekLabels = ['周一', '周二', '周三', '周四', '周五']
-      // TODO: 如果有补班数据，这里需要动态添加 '周六' 或 '周日'
-      // 目前后端返回的 weeklyStats 是7天的，我们可以根据 weeklyStats 里的 isWork 字段来决定显示多少天
-      // 暂时先展示7天，后续根据数据优化
-      const displayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-      
+      const weekLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] // Changed to Sun-Sat
       return (
         <PullToRefresh
           style={{
@@ -557,25 +551,10 @@ export default function Team() {
             
             <View className='week-chart'>
               {weekStatsLoading ? (
-                  <View className='chart-skeleton' style={{ display: 'flex', justifyContent: 'space-between', padding: '20rpx 0', height: '160rpx', alignItems: 'flex-end' }}>
-                      {[1,2,3,4,5,6,7].map(i => <Skeleton key={i} width={pxTransform(24)} height={pxTransform(100)} animated />)}
-                  </View>
+                  <Skeleton animated height={pxTransform(160)} width={pxTransform(320)} />
               ) : (
-                  displayLabels.map((label, index) => {
-                    // 只显示前5天，或者是补班的周末
-                    // 简化逻辑：始终显示周一到周五，如果周六日有人去office（或补班），则显示
-                    // 但为了 UI 稳定，暂时保持7天，只是样式上可以弱化周末
-                    // 您的需求是：只显示周一到周五，如果有补班才显示对应周末
-                    
-                    // Check if it's weekend
-                    const isWeekend = index >= 5
-                    const stat = weeklyStats[index] || { ratio: 0, officeCount: 0 }
-                    
-                    // Logic: Show Mon-Fri always. Show Sat/Sun only if officeCount > 0 (assuming work day or OT)
-                    // Or strictly follow "comp work day" logic if we had that flag.
-                    // For now, let's hide Sat/Sun if count is 0.
-                    if (isWeekend && stat.officeCount === 0) return null
-                    
+                  weekLabels.map((label, index) => {
+                    const stat = weeklyStats[index] || { ratio: 0 }
                     const barHeight = stat.ratio > 0 ? `${stat.ratio * 100}%` : '5%'
                     
                     return (
@@ -602,7 +581,7 @@ export default function Team() {
           <View className='section-container'>
             <View className='list-header'>
               <Text className='section-title'>
-                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : displayLabels[selectedDay]})
+                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : weekLabels[selectedDay]})
                 <Text className='member-count'>（{members.filter(m => m.status === 'OFFICE').length}人）</Text>
               </Text>
             </View>
