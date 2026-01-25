@@ -28,6 +28,9 @@ exports.main = async (event, context) => {
       case 'createTeam':
         result = await createTeam(myOpenId, payload);
         break;
+      case 'getTeamByInviteCode': // 新增：预览团队信息
+        result = await getTeamByInviteCode(myOpenId, payload);
+        break;
       case 'joinTeam':
         result = await joinTeam(myOpenId, payload);
         break;
@@ -120,14 +123,49 @@ async function createTeam(userId, { name, userInfo }) {
   }
 }
 
-// 2. 加入团队
-async function joinTeam(userId, { inviteCode, userInfo }) {
+// 1.5 根据邀请码获取团队信息 (预览)
+async function getTeamByInviteCode(userId, { inviteCode }) {
   // A. 查团队是否存在
   const teamRes = await db.collection('teams').where({ inviteCode }).get();
   if (teamRes.data.length === 0) {
-    return { code: 404, msg: '邀请码无效' };
+    return { code: 404, msg: '邀请码无效，请检查' };
   }
   const team = teamRes.data[0];
+
+  // B. 获取成员数量
+  const countRes = await db.collection('team_members').where({ teamId: team._id }).count();
+  
+  // C. 检查是否已加入
+  const isMember = await db.collection('team_members').where({ teamId: team._id, userId }).count();
+
+  return {
+    code: 200,
+    data: {
+      teamId: team._id,
+      name: team.name,
+      ownerId: team.ownerId, // 可以查一下 owner name，暂时只返回 ID
+      memberCount: countRes.total,
+      isJoined: isMember.total > 0
+    },
+    msg: '获取成功'
+  };
+}
+
+// 2. 加入团队
+async function joinTeam(userId, { inviteCode, teamId, userInfo }) {
+  // 允许通过 inviteCode 或 teamId 加入
+  let team;
+  
+  if (teamId) {
+      const teamRes = await db.collection('teams').doc(teamId).get();
+      team = teamRes.data;
+  } else if (inviteCode) {
+      const teamRes = await db.collection('teams').where({ inviteCode }).get();
+      if (teamRes.data.length === 0) return { code: 404, msg: '邀请码无效' };
+      team = teamRes.data[0];
+  } else {
+      return { code: 400, msg: '参数缺失' };
+  }
 
   // B. 查是否已加入
   const memberCheck = await db.collection('team_members').where({
@@ -143,7 +181,7 @@ async function joinTeam(userId, { inviteCode, userInfo }) {
   await db.collection('team_members').add({
     data: {
       teamId: team._id,
-      userId, // 响应第4点：这里写入用户ID
+      userId, 
       role: 'member',
       userInfo,
       joinedAt: new Date()

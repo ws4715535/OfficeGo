@@ -32,7 +32,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     }
 
     .title {
-      font-size: 36rpx;
+      font-size: 28rpx;
       font-weight: 800;
       color: $color-text-main;
     }
@@ -481,20 +481,32 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     }
   }
   
-  .modal-input {
-    background: #F9FAFB;
-    border: 2rpx solid #E5E7EB;
-    border-radius: 24rpx;
-    height: 96rpx;
-    padding: 0 32rpx;
-    font-size: 32rpx;
-    text-align: center;
-    color: $color-text-main;
-    
-    &:focus {
-      border-color: $color-primary;
-      background: #fff;
-    }
+  .team-preview-info {
+      background: #F9FAFB;
+      border-radius: 24rpx;
+      padding: 32rpx;
+      display: flex;
+      flex-direction: column;
+      gap: 16rpx;
+      width: 100%;
+      box-sizing: border-box;
+
+      .preview-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .label {
+              font-size: 28rpx;
+              color: $color-text-sub;
+          }
+
+          .value {
+              font-size: 28rpx;
+              color: $color-text-main;
+              font-weight: bold;
+          }
+      }
   }
   
   .modal-actions {

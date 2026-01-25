@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
 import { Skeleton, pxTransform, PullToRefresh } from '@nutui/nutui-react-taro'
-import { getMyTeams, getDailyAttendance, getTeamDetail, getTeamStats, joinTeam, createTeam } from '../../services/team'
+import { getMyTeams, getDailyAttendance, getTeamDetail, getTeamStats, joinTeam, createTeam, getTeamByInviteCode } from '../../services/team'
 import EmptyState from './empty/index'
 import AuthService from '../../services/auth'
 import downIcon from '../../assets/down.png'
@@ -301,11 +301,21 @@ export default function Team() {
 
   // --- Actions ---
   const handleSwitchTeam = () => {
-    if (myTeams.length <= 1) return
+    // Construct options: existing teams + "Join New Team"
+    const teamNames = myTeams.map(t => t.name)
+    const options = [...teamNames, '加入其他团队']
+    
     Taro.showActionSheet({
-      itemList: myTeams.map(t => t.name),
+      itemList: options,
       success: (res) => {
-        setCurrentTeam(myTeams[res.tapIndex])
+        const index = res.tapIndex
+        if (index < myTeams.length) {
+            // Switch to existing team
+            setCurrentTeam(myTeams[index])
+        } else {
+            // "Join New Team" clicked
+            setShowJoinModal(true)
+        }
       }
     })
   }
@@ -316,27 +326,59 @@ export default function Team() {
     refreshTeams()
   }
 
+  const [previewTeam, setPreviewTeam] = useState(null) // New state for preview modal
+
   const handleJoinConfirm = async () => {
-    if (inviteCode.length < 6) {
-       Taro.showToast({ title: '请输入有效邀请码', icon: 'none' })
+    // If preview exists, means we are confirming to join
+    if (previewTeam) {
+        Taro.showLoading({ title: '加入中...' })
+        try {
+           const userInfo = Taro.getStorageSync('userInfo')
+           await joinTeam(null, userInfo, previewTeam.teamId) // Use teamId
+           Taro.hideLoading()
+           Taro.showToast({ title: '加入成功', icon: 'success' })
+           setShowJoinModal(false)
+           setPreviewTeam(null)
+           setInviteCode(['', '', '', '', '', ''])
+           
+           // Trigger Reload
+           handleReload()
+        } catch (err) {
+           Taro.hideLoading()
+           Taro.showToast({ title: err.message || '加入失败', icon: 'none' })
+        }
+        return
+    }
+
+    // Otherwise, verify code and fetch preview
+    const code = inviteCode.join('')
+    if (code.length < 6) {
+       Taro.showToast({ title: '请输入6位邀请码', icon: 'none' })
        return
     }
     
-    Taro.showLoading({ title: '加入中...' })
+    Taro.showLoading({ title: '验证中...' })
     try {
-       const userInfo = Taro.getStorageSync('userInfo')
-       await joinTeam(inviteCode, userInfo)
+       const res = await getTeamByInviteCode(code)
        Taro.hideLoading()
-       Taro.showToast({ title: '加入成功', icon: 'success' })
-       setShowJoinModal(false)
-       setInviteCode('')
        
-       // Trigger Reload
-       handleReload()
+       if (res.data.isJoined) {
+           Taro.showToast({ title: '你已经在这个团队了', icon: 'none' })
+           return
+       }
+       
+       // Show Preview
+       setPreviewTeam(res.data)
     } catch (err) {
        Taro.hideLoading()
-       Taro.showToast({ title: err.message || '加入失败', icon: 'none' })
+       Taro.showToast({ title: err.message || '验证失败', icon: 'none' })
     }
+  }
+
+  const handleCloseJoinModal = () => {
+      setShowJoinModal(false)
+      setPreviewTeam(null)
+      setInviteCode(['', '', '', '', '', ''])
   }
 
   const handleCreateConfirm = async () => {
@@ -454,7 +496,6 @@ export default function Team() {
       return (
         <PullToRefresh
           style={{
-            minHeight: '100vh',
             backgroundColor: 'transparent'
           }}
           onRefresh={handleRefresh}
@@ -464,13 +505,9 @@ export default function Team() {
           <View className='page-header'>
             <View className='team-switcher' onClick={handleSwitchTeam}>
               <Text className='title'>{currentTeam?.name}</Text>
-              {myTeams.length > 1 && <Image src={downIcon} className='arrow-icon' />}
+              <Image src={downIcon} className='arrow-icon' />
             </View>
             <View className='header-actions'>
-                <View className='action-btn primary' onClick={() => setShowJoinModal(true)}>
-                  <Image src={addIcon} className='icon' />
-                  <Text className='label'>加入</Text>
-                </View>
                 <View className='action-btn icon-only' onClick={() => Taro.navigateTo({ url: `/pages/team/settings/index?teamId=${currentTeam?.teamId}` })}>
                   <Image src={settingIcon} className='icon' />
                 </View>
@@ -657,19 +694,56 @@ export default function Team() {
          {showJoinModal && (
            <View className='modal-overlay'>
              <View className='modal-card'>
-               <View className='modal-header'>
-                 <Text className='modal-title'>加入团队</Text>
-               </View>
-               <Input 
-                 className='modal-input' 
-                 placeholder='请输入邀请码' 
-                 value={inviteCode}
-                 onInput={e => setInviteCode(e.detail.value)}
-               />
-               <View className='modal-actions'>
-                 <Button className='modal-btn confirm' onClick={handleJoinConfirm}>确认</Button>
-                 <Text className='modal-btn cancel' onClick={() => setShowJoinModal(false)}>取消</Text>
-               </View>
+               {previewTeam ? (
+                 // Preview State
+                 <>
+                    <View className='modal-header'>
+                        <Text className='modal-title'>加入确认</Text>
+                    </View>
+                    <View className='team-preview-info'>
+                        <View className='preview-row'>
+                            <Text className='label'>团队名称：</Text>
+                            <Text className='value'>{previewTeam.name}</Text>
+                        </View>
+                        <View className='preview-row'>
+                            <Text className='label'>现有成员：</Text>
+                            <Text className='value'>{previewTeam.memberCount} 人</Text>
+                        </View>
+                    </View>
+                    <View className='modal-actions'>
+                        <Button className='modal-btn confirm' onClick={handleJoinConfirm}>确认加入</Button>
+                        <Text className='modal-btn cancel' onClick={handleCloseJoinModal}>再想想</Text>
+                    </View>
+                 </>
+               ) : (
+                 // Input State
+                 <>
+                    <View className='modal-header'>
+                        <Text className='modal-title'>加入团队</Text>
+                        <Text className='modal-subtitle'>请输入6位团队邀请码</Text>
+                    </View>
+                    
+                    <View className='code-input-container'>
+                        {inviteCode.map((char, index) => (
+                            <Input 
+                                key={index}
+                                className={`code-input-box ${focusIndex === index ? 'active' : ''}`}
+                                value={char}
+                                maxlength={1}
+                                focus={focusIndex === index}
+                                onInput={e => handleInviteCodeInput(index, e.detail.value)}
+                                onFocus={() => setFocusIndex(index)}
+                                type='text'
+                            />
+                        ))}
+                    </View>
+
+                    <View className='modal-actions'>
+                        <Button className='modal-btn confirm' onClick={handleJoinConfirm}>下一步</Button>
+                        <Text className='modal-btn cancel' onClick={handleCloseJoinModal}>取消</Text>
+                    </View>
+                 </>
+               )}
              </View>
            </View>
          )}

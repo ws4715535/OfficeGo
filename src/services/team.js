@@ -20,7 +20,8 @@ const callTeamApi = async (action, payload = {}) => {
 };
 
 export const createTeam = (name, userInfo) => callTeamApi('createTeam', { name, userInfo });
-export const joinTeam = (inviteCode, userInfo) => callTeamApi('joinTeam', { inviteCode, userInfo });
+export const getTeamByInviteCode = (inviteCode) => callTeamApi('getTeamByInviteCode', { inviteCode });
+export const joinTeam = (inviteCode, userInfo, teamId = null) => callTeamApi('joinTeam', { inviteCode, userInfo, teamId }); // Support teamId
 export const getMyTeams = () => callTeamApi('getMyTeams');
 // export const getTeamStatus = (teamId, dateStr) => callTeamApi('getTeamStatus', { teamId, dateStr }); // Deprecated
 export const getDailyAttendance = (teamId, dateStr) => callTeamApi('getDailyAttendance', { teamId, dateStr });
