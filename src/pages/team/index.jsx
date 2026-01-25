@@ -39,7 +39,18 @@ export default function Team() {
   const todayIndex = getDayIndex(new Date())
 
   // 1. Initial Load (FSM Trigger)
+  // Use a flag to ensure initial load happens only once per session
+  const isLoaded = useRef(false)
+
   useDidShow(async () => {
+    if (isLoaded.current) {
+        // If already loaded, just try silent refresh if needed
+        // But for now, let's skip it to save requests as per requirement
+        // Or we can check if data is stale (e.g. > 5 mins old)
+        console.log('Page already loaded, skipping full refresh')
+        return
+    }
+
     // 优先尝试从缓存恢复
     const userId = Taro.getStorageSync('userId')
     const lastTeamId = Taro.getStorageSync('last_team_id')
@@ -86,6 +97,7 @@ export default function Team() {
                await AuthService.login()
             }
             refreshTeams(true) // silent mode
+            isLoaded.current = true // Mark as loaded
         } catch (e) {
             console.error('Silent refresh failed', e)
         }
@@ -102,7 +114,8 @@ export default function Team() {
                // 暂时尝试后台登录一次
                await AuthService.login()
             }
-            refreshTeams()
+            await refreshTeams() // Wait for it
+            isLoaded.current = true // Mark as loaded
         } catch (e) {
             console.error('Auto login failed', e)
             setViewState('empty')
@@ -400,12 +413,14 @@ export default function Team() {
             Taro.removeStorageSync(`team_detail_${userId}_${currentTeam.teamId}`)
         }
         lastLoadedTeamId.current = null
+        isLoaded.current = false // Reset loaded flag to allow refresh
         
         // Reset day selection to today
         setSelectedDay(todayIndex)
         
         // Trigger refresh
         await refreshTeams(true)
+        isLoaded.current = true // Mark as loaded again
         
         Taro.showToast({ title: '刷新成功', icon: 'success' })
         resolve('done')
@@ -505,7 +520,7 @@ export default function Team() {
           {/* 3. Week Distribution (Simplified) */}
           <View className='section-container'>
             <View className='section-header-row'>
-              <Text className='section-title'>本周到岗趋势</Text>
+              <Text className='section-title'>Office Day趋势</Text>
               <Text className='date-range'>{getWeekDateRange()}</Text>
             </View>
             

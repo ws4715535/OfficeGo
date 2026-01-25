@@ -57,8 +57,14 @@ const CustomCalendar = ({
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ type: 'current', day: i, dateStr: formatDateStr(year, month, i) });
     }
-    // 3. 下月补齐
-    const remaining = 42 - days.length;
+    // 3. 下月补齐 (Dynamic Rows)
+    // Total cells = days + firstDayWeek
+    // If <= 35, we need 5 rows (35 cells). If > 35, we need 6 rows (42 cells).
+    const totalCurrentCells = days.length;
+    const rowsNeeded = Math.ceil(totalCurrentCells / 7);
+    const targetCells = rowsNeeded * 7;
+    
+    const remaining = targetCells - days.length;
     for (let i = 1; i <= remaining; i++) {
         days.push({ type: 'next', day: i, dateStr: formatDateStr(year, month + 1, i) });
     }
@@ -71,6 +77,7 @@ const CustomCalendar = ({
     // 公共假期（非调休上班）不可操作
     const mark = marks[item.dateStr];
     if (mark && mark.isHoliday && !mark.isWork) {
+        Taro.showToast({ title: '别卷了，今天不上班！', icon: 'none' });
         return;
     }
 
@@ -87,6 +94,7 @@ const CustomCalendar = ({
     // 公共假期（非调休上班）不可操作
     const mark = marks[item.dateStr];
     if (mark && mark.isHoliday && !mark.isWork) {
+        Taro.showToast({ title: '别卷了，今天不上班！', icon: 'none' });
         return;
     }
 
@@ -113,13 +121,20 @@ const CustomCalendar = ({
           const isSpecial = specialDates.includes(item.dateStr);
           const isToday = isSameDay(item.dateStr, todayDate);
           const isCurrentMonth = item.type === 'current';
+          
+          // Weekend check
+          const isWeekend = (index % 7 === 0) || (index % 7 === 6);
+          // Holiday check (Pure holiday, not comp work day)
+          const isHolidayBg = isCurrentMonth && mark && mark.isHoliday && !mark.isWork;
 
           const cardClass = classNames('date-card', {
             'is-other-month': !isCurrentMonth,
             'is-special': isCurrentMonth && isSpecial, // Highest priority
             'is-selected': isCurrentMonth && isSelected && !isSpecial,
             'is-today': isCurrentMonth && isToday && !isSelected && !isSpecial,
-            'is-normal': isCurrentMonth && !isToday && !isSelected && !isSpecial
+            'is-holiday-bg': isHolidayBg && !isSelected && !isSpecial && !isToday,
+            'is-weekend': isWeekend && !isSelected && !isSpecial && !isToday && !isHolidayBg,
+            'is-normal': isCurrentMonth && !isToday && !isSelected && !isSpecial && !isHolidayBg && !isWeekend
           });
 
           return (
@@ -132,9 +147,13 @@ const CustomCalendar = ({
               <View className={cardClass}>
                 <Text className="date-text">{item.day}</Text>
                 {/* 底部标记：假期名或"班" */}
-                {isCurrentMonth && mark && (
-                    <Text className={classNames('bottom-text', { 'is-work': mark.isWork, 'is-holiday': mark.isHoliday && !mark.isWork })}>
-                        {mark.bottomText}
+                {isCurrentMonth && (mark || isSpecial) && (
+                    <Text className={classNames('bottom-text', { 
+                        'is-work': mark && mark.isWork, 
+                        'is-holiday': mark && mark.isHoliday && !mark.isWork,
+                        'is-leave': isSpecial // Add special style
+                    })}>
+                        {mark ? mark.bottomText : (isSpecial ? '请假' : '')}
                     </Text>
                 )}
               </View>

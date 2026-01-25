@@ -158,7 +158,6 @@ export default function Calendar() {
   const renderHeader = () => {
     return (
       <View className='custom-header'>
-        <Text className='page-title'>记录</Text>
         <View className='month-switcher'>
           <View className='arrow-btn' onClick={handlePrevMonth}>
             <Image src={leftIcon} className='nav-icon' />
@@ -177,7 +176,6 @@ export default function Calendar() {
   return (
     <View className='calendar-page'>
       {renderHeader()}
-      
       <CustomCalendar
         currentDate={currentDate}
         value={officeDateStrs}
@@ -189,7 +187,7 @@ export default function Calendar() {
         config={{
           dayFontSize: '32rpx',
           headerTitleSize: '36rpx',
-          selectedBgColor: '#5B5CEB', // 你的紫色
+          selectedBgColor: '#5b5bebc9', // 你的紫色
           selectedRadius: '4rpx',    // 20rpx 是圆角矩形，50% 是正圆，你可以试试哪个顺眼
         }}
       />
@@ -201,11 +199,7 @@ export default function Calendar() {
         </View>
         <View className='legend-row'>
           <View className='dot leave' />
-          <Text className='legend-text'>长按标记 "请假"</Text>
-        </View>
-        <View className='legend-row'>
-          <View className='dot leave' />
-             <Text className='legend-text'>本月请假 {monthSummary.leaveCount} 天</Text>
+          <Text className='legend-text'>长按标记 "请假"， 本月已请假{monthSummary.leaveCount} 天</Text>
         </View>
         <View className='legend-row'>
           <View className='dot leave' />

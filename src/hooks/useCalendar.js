@@ -66,14 +66,14 @@ export const useCalendar = () => {
     // 2. Queue for Cloud Sync
     pendingChanges.current[dateStr] = status;
     
-    // 3. Debounce Cloud Call (2 seconds)
+    // 3. Debounce Cloud Call (0.5 seconds)
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
     
     debounceTimer.current = setTimeout(() => {
       flushChanges();
-    }, 1000);
+    }, 500);
   }, [flushChanges]);
 
   const setDate = useCallback((date) => {
@@ -160,7 +160,7 @@ export const useCalendar = () => {
 
     // 如果不是工作日，也不能标记
     if (!isWorkDay(dateStr)) {
-      Taro.showToast({ title: '非工作日不可打卡', icon: 'none' });
+      Taro.showToast({ title: '别卷了，今天不上班！', icon: 'none' });
       return;
     }
 
@@ -208,6 +208,10 @@ export const useCalendar = () => {
              // 可能是 null 或 LEAVE，都覆盖为 OFFICE
              if (isWorkDay(dateStr)) {
                  updateDateStatus(dateStr, RECORD_TYPES.OFFICE);
+             } else {
+                 // 试图批量选中非工作日时也提示
+                 console.log('试图批量选中非工作日:', dateStr);
+                 Taro.showToast({ title: '别卷了，不是工作日！', icon: 'none' });
              }
         }
     });

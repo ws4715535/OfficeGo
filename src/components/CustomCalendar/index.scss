@@ -1,10 +1,12 @@
-@import "../../styles/variables.scss";
+@use "../../styles/variables.scss" as *;
 
 .custom-calendar {
   background: $color-white;
   border-radius: 32rpx;
   padding: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: 100%; // Ensure full width
+  box-sizing: border-box;
 
   .calendar-week-header {
     display: grid;
@@ -61,6 +63,10 @@
           &.is-work {             
              color: $color-text-sub; // 补班灰色
           }
+
+          &.is-leave {
+            color: $color-leave; // 请假红色
+          }
         }
         
         // 调整文字布局为垂直分布
@@ -83,9 +89,27 @@
           background-color: #F7F8FA;
         }
 
+        // 2.1 周末
+        &.is-weekend {
+          background-color: #F7F8FA; // Keep same bg or slightly different
+          .date-text {
+            color: #9CA3AF; // Gray-400
+          }
+        }
+
+        // 2.2 公共假期
+        &.is-holiday-bg {
+          background-color: #FEF2F2; // Red-50
+          .date-text {
+            color: $color-leave; // Red
+          }
+          .bottom-text {
+             color: $color-leave;
+          }
+        }
+
         // 3. 今天 (未选中)
         &.is-today {
-          background-color: $color-white;
           border-color: rgba($color-primary, 0.3) !important; // Add opacity
           .date-text {
             color: $color-text-main;
@@ -111,16 +135,16 @@
 
         // 5. 特殊/请假 (优先级更高)
         &.is-special {
-          // background-color: $color-leave !important;
-          background-color: rgba($color-leave, 0.85) !important; // Add opacity
-          box-shadow: 0 4rpx 12rpx rgba(234, 12, 12, 0.3);
+          background-color: #FEF2F2 !important; // Match holiday bg
+          // background-color: rgba($color-leave, 0.85) !important;
+          // box-shadow: 0 4rpx 12rpx rgba(234, 12, 12, 0.3); // Remove shadow to match holiday
           border-color: transparent;
           .date-text {
-            color: $color-white !important;
+            color: $color-leave !important; // Red text
             font-weight: bold;
           }
           .bottom-text {
-            color: $color-white !important;
+            color: $color-leave !important;
             opacity: 0.9;
           }
         }

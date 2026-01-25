@@ -9,17 +9,10 @@ import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
 import { useDashboard } from '../../hooks/useDashboard'
-import { getMyTeams, getTeamStatus } from '../../services/team'
-import AuthService from '../../services/auth'
 import './index.scss'
 
 export default function Index() {
   const { year, month, stats } = useDashboard()
-  const [teamState, setTeamState] = useState({
-    hasTeam: false,
-    officeMembers: [],
-    totalOffice: 0
-  })
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
 
   useDidShow(async () => {
@@ -37,31 +30,6 @@ export default function Index() {
             nickName: localUser.nickName || 'User',
             avatarUrl: localUser.avatarUrl || ''
         })
-    }
-
-    // Check if user has any teams
-    try {
-      const teams = await getMyTeams()
-      if (teams && teams.length > 0) {
-        // Fetch status for the first team
-        const today = new Date().toISOString().split('T')[0]
-        const res = await getTeamStatus(teams[0].teamId, today)
-        const members = res.members || []
-        
-        const office = members.filter(m => m.status === 'office')
-        
-        setTeamState({
-          hasTeam: true,
-          officeMembers: office,
-          totalOffice: office.length
-        })
-      } else {
-        setTeamState({ hasTeam: false, officeMembers: [], totalOffice: 0 })
-      }
-    } catch (err) {
-      console.error('Failed to load team data on dashboard', err)
-      // Fallback to empty state
-      setTeamState({ hasTeam: false, officeMembers: [], totalOffice: 0 })
     }
   })
 
@@ -93,35 +61,17 @@ export default function Index() {
       {/* 2. Team Banner (New) */}
       <View className='team-banner-container'>
         <View className='team-banner' onClick={handleBannerClick}>
-          {teamState.hasTeam ? (
-            <>
-              <View className='avatars'>
-                {teamState.officeMembers.slice(0, 3).map((m, i) => (
-                  <Image key={m.id} src={m.avatar} className='avatar' style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0 }} />
-                ))}
-              </View>
-              <View className='banner-text'>
-                <Text className='flip-wrapper'>
-                  今天 {teamState.officeMembers[0]?.name || '大家'} 等 {teamState.totalOffice} 人在公司
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <View className='avatars'>
+            <View className='avatars'>
                 {['A', 'B', 'C'].map((_, i) => (
-                   <Image 
-                     key={i} 
-                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} 
-                     className='avatar' 
-                     style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0, opacity: 1, filter: 'grayscale(100%)' }} 
-                   />
+                    <Image 
+                        key={i} 
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} 
+                        className='avatar' 
+                        style={{ zIndex: 3-i, marginLeft: i > 0 ? '-16rpx' : 0, opacity: 1 }} 
+                    />
                 ))}
-              </View>
-              <Text className='banner-text'>加入团队，看看他们来了么！</Text>
-            </>
-          )}
-          
+            </View>
+            <Text className='banner-text'>加入团队，看看他们来了么！</Text>
           <View className='arrow-btn'>
             <Image src={rightArrowIcon} className='arrow-icon' />
           </View>

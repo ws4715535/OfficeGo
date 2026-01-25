@@ -253,10 +253,6 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       background: #E5E7EB;
       border-radius: $radius-full;
       transition: all 0.3s ease;
-
-      &.best {
-        // background: $color-primary; // No longer needed per request
-      }
     }
 
     .day-label {
