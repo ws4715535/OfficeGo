@@ -67,6 +67,28 @@ const AuthService = {
   },
 
   /**
+   * Logout
+   * Clear local storage and session
+   */
+  logout: () => {
+    try {
+      Taro.removeStorageSync('userId')
+      Taro.removeStorageSync('userInfo')
+      Taro.removeStorageSync('session_key')
+      // Clear team related cache
+      const keys = Taro.getStorageInfoSync().keys
+      keys.forEach(key => {
+        if (key.startsWith('team_detail_') || key === 'last_team_id') {
+            Taro.removeStorageSync(key)
+        }
+      })
+      console.log('Logged out successfully')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  },
+
+  /**
    * Delete User (For Debug/Testing)
    */
   deleteUser: async () => {

@@ -344,7 +344,8 @@ export default function Settings() {
                 content: '确定要退出登录吗？',
                 success: async (res) => {
                     if (res.confirm) {
-                        // Redirect to Onboarding without clearing storage
+                        // Clear storage and logout
+                        AuthService.logout()
                         Taro.reLaunch({ url: '/pages/onboarding/index' })
                     }
                 }
