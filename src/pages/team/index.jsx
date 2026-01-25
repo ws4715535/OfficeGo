@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
 import { Skeleton, pxTransform, PullToRefresh } from '@nutui/nutui-react-taro'
-import { getMyTeams, getTeamStatus, getTeamDetail, joinTeam, createTeam } from '../../services/team'
+import { getMyTeams, getDailyAttendance, getTeamDetail, getTeamStats, joinTeam, createTeam } from '../../services/team'
 import EmptyState from './empty/index'
 import AuthService from '../../services/auth'
 import downIcon from '../../assets/down.png'
@@ -87,19 +87,22 @@ export default function Team() {
         
         // 恢复数据
         updateMembersList(cachedData.members || [])
-        setWeeklyStats(cachedData.summary?.weeklyTrend || [])
-        setTopWorker(cachedData.summary?.topWorker || null)
-        if (cachedData.summary?.bestDay) {
-            const { bestDay } = cachedData.summary
-            setBestDayInfo({
-                dayName: bestDay.dayName,
-                count: bestDay.count,
-                desc: bestDay.count > 0 
-                    ? `本周${bestDay.dayName}最热闹，有${bestDay.count}位小伙伴在办公室, 线下活动约起来！`
-                    : '本周还没有足够的数据来预测黄金日'
-            })
-        }
+        // Stats are NOT cached in base info anymore, need to fetch
+        fetchTeamDetail(cachedData.teamId) // This will trigger logic to fetch stats separately if needed, OR we just let it be empty initially and fetch stats?
+        // Actually, the new logic splits fetching. 
+        // If we have cached base info, we show it.
+        // Then we should probably fetch stats in background.
         
+        // Let's refine this:
+        // We have base info. We need stats.
+        // Call fetchTeamDetail with refDate=null (current week) but skip base info fetch if cached?
+        // Or simpler: just let silent refresh handle it.
+        
+        // For now, let's clear stats placeholders
+        setWeeklyStats([])
+        setTopWorker(null)
+        setBestDayInfo({ dayName: '加载中...', count: 0, desc: '正在获取最新数据' })
+
         // 静默刷新（不显示loading）
         // 只有当缓存的ID和当前页面逻辑需要的ID一致时，才考虑静默刷新
         // 这里我们可以简单地总是尝试静默刷新以保持数据最新，但避免了loading闪烁
@@ -108,6 +111,8 @@ export default function Team() {
             if (!userId) {
                await AuthService.login()
             }
+            // Trigger stats fetch specifically
+            // We use refreshTeams(true) which calls fetchTeamDetail
             refreshTeams(true) // silent mode
             isLoaded.current = true // Mark as loaded
         } catch (e) {
@@ -184,50 +189,51 @@ export default function Team() {
   // 3. Fetch Team Detail (Initial Load - Big Manager)
   const fetchTeamDetail = async (teamId, refDate = null) => {
       try {
+          let teamData = null;
+          
+          if (!refDate) {
+              // 1. Initial Load: Fetch Base Info
+              const baseRes = await getTeamDetail(teamId)
+              teamData = baseRes;
+              updateMembersList(baseRes.members)
+              
+              // Cache Base Data
+              const userId = Taro.getStorageSync('userId')
+              if (userId) {
+                  const cacheKey = `team_detail_${userId}_${teamId}`
+                  Taro.setStorageSync(cacheKey, {
+                      teamId,
+                      baseInfo: baseRes.baseInfo,
+                      members: baseRes.members
+                  })
+              }
+              lastLoadedTeamId.current = teamId 
+          }
+
+          // 2. Fetch Stats (Async)
           if (refDate) {
               setWeekStatsLoading(true)
               setMembersLoading(true)
           }
-          const res = await getTeamDetail(teamId, refDate)
-          console.log('Team Detail Response:', res)
-          const { members, summary } = res
           
-          // Update Today's Members
-          updateMembersList(members)
+          const statsRes = await getTeamStats(teamId, 'week', refDate)
+          const { trend, bestDay, topWorker } = statsRes
           
-          // Update Weekly Stats
-          setWeeklyStats(summary.weeklyTrend)
+          // Update Stats
+          setWeeklyStats(trend)
           
-          // Update Best Day
-          if (summary.bestDay && summary.bestDay.count > 0) {
+          if (bestDay && bestDay.count > 0) {
             setBestDayInfo({
-                dayName: summary.bestDay.dayName,
-                count: summary.bestDay.count,
-                desc: `本周${summary.bestDay.dayName}最热闹，有${summary.bestDay.count}位小伙伴在办公室, 线下活动约起来！`
+                dayName: bestDay.dayName,
+                count: bestDay.count,
+                desc: `本周${bestDay.dayName}最热闹，有${bestDay.count}位小伙伴在办公室, 线下活动约起来！`
             })
           } else {
              setBestDayInfo({ dayName: '暂无数据', count: 0, desc: '大家似乎都很喜欢远程办公呢' })
           }
 
-          // Update Top Worker
-          setTopWorker(summary.topWorker)
+          setTopWorker(topWorker)
           
-          // Cache Data (Only if default week)
-          const userId = Taro.getStorageSync('userId')
-          if (userId && !refDate) {
-             const cacheKey = `team_detail_${userId}_${teamId}`
-             Taro.setStorageSync(cacheKey, {
-                teamId,
-                baseInfo: res.baseInfo,
-                members,
-                summary
-             })
-             console.log('Cache saved:', cacheKey)
-          }
-          
-          if (!refDate) {
-              lastLoadedTeamId.current = teamId // Update Ref only for main load
-          }
       } catch (err) {
           console.error('Fetch team detail failed', err)
       } finally {
@@ -250,7 +256,7 @@ export default function Team() {
         targetDate.setDate(targetDate.getDate() + index)
         const dateStr = targetDate.toISOString().split('T')[0]
 
-        const res = await getTeamStatus(currentTeam.teamId, dateStr)
+        const res = await getDailyAttendance(currentTeam.teamId, dateStr)
         updateMembersList(res.members)
         
       } catch (err) {
@@ -444,7 +450,13 @@ export default function Team() {
   }
 
   const renderActive = () => {
-      const weekLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      // 动态生成周标签，支持补班
+      const weekLabels = ['周一', '周二', '周三', '周四', '周五']
+      // TODO: 如果有补班数据，这里需要动态添加 '周六' 或 '周日'
+      // 目前后端返回的 weeklyStats 是7天的，我们可以根据 weeklyStats 里的 isWork 字段来决定显示多少天
+      // 暂时先展示7天，后续根据数据优化
+      const displayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      
       return (
         <PullToRefresh
           style={{
@@ -549,8 +561,21 @@ export default function Team() {
                       {[1,2,3,4,5,6,7].map(i => <Skeleton key={i} width={pxTransform(24)} height={pxTransform(100)} animated />)}
                   </View>
               ) : (
-                  weekLabels.map((label, index) => {
-                    const stat = weeklyStats[index] || { ratio: 0 }
+                  displayLabels.map((label, index) => {
+                    // 只显示前5天，或者是补班的周末
+                    // 简化逻辑：始终显示周一到周五，如果周六日有人去office（或补班），则显示
+                    // 但为了 UI 稳定，暂时保持7天，只是样式上可以弱化周末
+                    // 您的需求是：只显示周一到周五，如果有补班才显示对应周末
+                    
+                    // Check if it's weekend
+                    const isWeekend = index >= 5
+                    const stat = weeklyStats[index] || { ratio: 0, officeCount: 0 }
+                    
+                    // Logic: Show Mon-Fri always. Show Sat/Sun only if officeCount > 0 (assuming work day or OT)
+                    // Or strictly follow "comp work day" logic if we had that flag.
+                    // For now, let's hide Sat/Sun if count is 0.
+                    if (isWeekend && stat.officeCount === 0) return null
+                    
                     const barHeight = stat.ratio > 0 ? `${stat.ratio * 100}%` : '5%'
                     
                     return (
@@ -577,7 +602,7 @@ export default function Team() {
           <View className='section-container'>
             <View className='list-header'>
               <Text className='section-title'>
-                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : weekLabels[selectedDay]})
+                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : displayLabels[selectedDay]})
                 <Text className='member-count'>（{members.filter(m => m.status === 'OFFICE').length}人）</Text>
               </Text>
             </View>

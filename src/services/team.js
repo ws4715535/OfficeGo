@@ -22,8 +22,11 @@ const callTeamApi = async (action, payload = {}) => {
 export const createTeam = (name, userInfo) => callTeamApi('createTeam', { name, userInfo });
 export const joinTeam = (inviteCode, userInfo) => callTeamApi('joinTeam', { inviteCode, userInfo });
 export const getMyTeams = () => callTeamApi('getMyTeams');
-export const getTeamStatus = (teamId, dateStr) => callTeamApi('getTeamStatus', { teamId, dateStr });
-export const getTeamDetail = (teamId, refDate) => callTeamApi('getTeamDetail', { teamId, refDate });
+// export const getTeamStatus = (teamId, dateStr) => callTeamApi('getTeamStatus', { teamId, dateStr }); // Deprecated
+export const getDailyAttendance = (teamId, dateStr) => callTeamApi('getDailyAttendance', { teamId, dateStr });
+export const getTeamDetail = (teamId) => callTeamApi('getTeamDetail', { teamId }); // Base info only
+export const getTeamStats = (teamId, dimension = 'week', refDate) => callTeamApi('getTeamStats', { teamId, dimension, refDate }); // Stats only
+
 export const updateTeamName = (teamId, name) => callTeamApi('updateTeam', { teamId, name });
 export const removeMember = (teamId, removeMemberId) => callTeamApi('updateTeam', { teamId, removeMemberId });
 export const leaveTeam = (teamId) => callTeamApi('leaveTeam', { teamId });

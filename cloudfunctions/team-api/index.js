@@ -35,10 +35,17 @@ exports.main = async (event, context) => {
         result = await getMyTeams(myOpenId);
         break;
       case 'getTeamStatus':
-        result = await getTeamStatus(myOpenId, payload); // 聚合查询
+        // result = await getTeamStatus(myOpenId, payload); // 旧逻辑，已废弃
+        result = { code: 400, msg: 'API Deprecated, use getDailyAttendance or getTeamStats' };
+        break;
+      case 'getDailyAttendance': // 新 Action
+        result = await getDailyAttendance(myOpenId, payload);
         break;
       case 'getTeamDetail':
-        result = await getTeamDetail(myOpenId, payload); // 新增：首屏大管家
+        result = await getTeamDetail(myOpenId, payload); // 简化版
+        break;
+      case 'getTeamStats':
+        result = await getTeamStats(myOpenId, payload); // 新增统计
         break;
       case 'updateTeam':
         result = await updateTeam(myOpenId, payload);
@@ -171,8 +178,8 @@ async function getMyTeams(userId) {
   return { code: 200, data: list };
 }
 
-// 4. 获取团队今日状态 (小兵：只负责按需加载)
-async function getTeamStatus(myUserId, { teamId, dateStr }) {
+// 4. 获取单日考勤 (点击某一天) - 原 getTeamStatus 改造
+async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   // dateStr 格式: "2026-01-23"
   
   // 第一步：获取团队所有成员
@@ -226,101 +233,88 @@ async function getTeamStatus(myUserId, { teamId, dateStr }) {
   };
 }
 
-// 5. 获取团队详情 (大管家：首屏加载)
-async function getTeamDetail(myUserId, { teamId, refDate }) {
-  console.log(`[TeamAPI] Version: Fix-Scope-v2`);
-  console.log(`[TeamAPI] getTeamDetail Start: teamId=${teamId}, refDate=${refDate}`);
+// 5. 获取团队基础详情 (首屏加载，无统计)
+async function getTeamDetail(myUserId, { teamId }) {
+  console.log(`[TeamAPI] getTeamDetail (Base): teamId=${teamId}`);
   
-  // Use refDate if provided, otherwise use current time
+  // 1. 获取团队基本信息
+  const teamInfoRes = await db.collection('teams').doc(teamId).get();
+  const teamInfo = teamInfoRes.data;
+
+  // 2. 获取成员列表 (不带今日状态，只带基础信息)
+  const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
+  const members = membersRes.data.map(m => ({
+    userId: m.userId,
+    name: m.nickName || 'Unknown',
+    avatar: m.avatarUrl || '',
+    role: m.role || 'member',
+    isMe: m.userId === myUserId,
+    joinedAt: m.joinedAt
+  }));
+
+  // 排序：自己 -> Admin -> 其他
+  members.sort((a, b) => {
+    if (a.isMe && !b.isMe) return -1;
+    if (!a.isMe && b.isMe) return 1;
+    if (a.role === 'admin' && b.role !== 'admin') return -1;
+    if (a.role !== 'admin' && b.role === 'admin') return 1;
+    return 0;
+  });
+
+  return {
+    code: 200,
+    data: {
+      baseInfo: {
+        teamId: teamInfo._id,
+        name: teamInfo.name,
+        inviteCode: teamInfo.inviteCode,
+        ownerId: teamInfo.ownerId,
+        createdAt: teamInfo.createdAt,
+        updatedAt: teamInfo.updatedAt
+      },
+      members: members
+    }
+  };
+}
+
+// 5.5 获取团队统计 (异步加载：趋势 + 榜单)
+async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
+  console.log(`[TeamAPI] getTeamStats: teamId=${teamId}, dim=${dimension}, ref=${refDate}`);
   const now = refDate ? new Date(refDate) : new Date();
   
-  // 计算本周周一
-  const day = now.getDay(); 
-  const diff = now.getDate() - (day === 0 ? 6 : day - 1); 
-  const monday = new Date(now);
-  monday.setDate(diff);
+  let startDate, endDate;
+  const dateList = []; // 用于趋势图
 
-  // 生成本周7天日期字符串
-  const weekDates = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    weekDates.push(d.toISOString().split('T')[0]);
+  if (dimension === 'week') {
+    // 计算本周周一至周日
+    const day = now.getDay(); 
+    const diff = now.getDate() - (day === 0 ? 6 : day - 1); 
+    startDate = new Date(now);
+    startDate.setDate(diff); // Monday
+    startDate.setHours(0,0,0,0);
+    
+    // Generate 7 days
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      dateList.push(d.toISOString().split('T')[0]);
+    }
+  } else if (dimension === 'month') {
+      // 暂时只支持 week，month 逻辑类似但数据量大
+      // ...
   }
 
-  // 并行查询：今日详情 + 本周统计
-  const todayStr = now.toISOString().split('T')[0];
-  
-  // 1. (已移除 todayStatusPromise，改为直接查询)
-  // const todayStatusPromise = getTeamStatus(myUserId, { teamId, dateStr: todayStr });
-
-  // 2. 获取本周统计
-  // 为了性能，这里我们只查 officeCount，不查具体人
-  // 先查出所有成员ID
+  // 1. 获取本周所有 office 记录
   const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
-  const members = membersRes.data;
-  const memberIds = members.map(m => m.userId);
-  const totalMembers = members.length;
+  const memberIds = membersRes.data.map(m => m.userId);
+  const totalMembers = memberIds.length;
 
-  // 1. 获取今日状态
-  // 这里逻辑有问题：todayStatusPromise 调用 getTeamStatus 时只查询了“attendance_records”，
-  // 但 getTeamStatus 的逻辑是：先查 team_members，然后查 attendance，然后 filter 掉没有 attendance 的人？
-  // 让我们仔细看下 getTeamStatus：
-  // resultList.push(...) 是在 if (status) 块里的。这意味着只有今天打了卡（有记录）的人才会被返回！
-  // 需求：getTeamDetail 需要返回“团队成员列表”，无论他今天是否打卡。
-
-  // 修复：重写这部分逻辑，不依赖 getTeamStatus，或者修改 getTeamStatus。
-  // 鉴于 getTeamStatus 是给“今日状态”用的，可能确实只需要显示有状态的人（或者前端处理了？）。
-  // 但 Team Settings 需要完整的成员列表。
-
-  // 重新获取今日考勤，并合并到所有成员列表中
-  const attendanceRes = await db.collection('attendance_records')
-    .where({
-      _openid: _.in(memberIds),
-      date: todayStr
-    })
-    .get();
-
-  const attendanceMap = {};
-  attendanceRes.data.forEach(r => {
-    attendanceMap[r._openid] = r.status;
-  });
-
-  const allMembersWithStatus = members.map(m => {
-    const status = attendanceMap[m.userId] || null; // 没打卡就是 null
-    return {
-        userId: m.userId,
-        name: m.nickName || 'Unknown',
-        avatar: m.avatarUrl || '',
-        role: m.role || 'member',
-        status: status, // 前端可能需要处理 null
-        isMe: m.userId === myUserId
-    };
-  });
-  
-  // 排序：有状态的在前，admin在前
-  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2 };
-  allMembersWithStatus.sort((a, b) => {
-      // 1. 优先自己
-      if (a.isMe && !b.isMe) return -1;
-      if (!a.isMe && b.isMe) return 1;
-
-      // 2. Admin 优先
-      if (a.role === 'admin' && b.role !== 'admin') return -1;
-      if (a.role !== 'admin' && b.role === 'admin') return 1;
-
-      // 3. 有状态优先
-      const scoreA = sortScore[a.status] || 0;
-      const scoreB = sortScore[b.status] || 0;
-      return scoreB - scoreA;
-  });
-
-  const weekStatsPromise = db.collection('attendance_records')
+  const statsRes = await db.collection('attendance_records')
     .aggregate()
     .match({
       _openid: _.in(memberIds),
-      date: _.in(weekDates),
-      status: 'office' // 只统计去办公室的人数
+      date: _.in(dateList),
+      status: 'office'
     })
     .group({
       _id: '$date',
@@ -328,55 +322,40 @@ async function getTeamDetail(myUserId, { teamId, refDate }) {
     })
     .end();
 
-  // 2.1 获取本周 Top Worker (上班王)
-  const topWorkerPromise = db.collection('attendance_records')
+  // 2. 获取 Top Worker
+  const topWorkerRes = await db.collection('attendance_records')
     .aggregate()
     .match({
       _openid: _.in(memberIds),
-      date: _.in(weekDates),
+      date: _.in(dateList),
       status: 'office'
     })
     .group({
       _id: '$_openid',
       count: $.sum(1)
     })
-    .sort({
-      count: -1
-    })
+    .sort({ count: -1 })
     .limit(1)
     .end();
 
-  const [weekStatsRes, topWorkerRes] = await Promise.all([weekStatsPromise, topWorkerPromise]);
-  
-  // 安全获取数据
-  const todayMembers = allMembersWithStatus;
-  const weekStatsList = (weekStatsRes && weekStatsRes.list) ? weekStatsRes.list : [];
-
-  console.log(`[TeamAPI] getTeamDetail Fetched Data: todayCount=${todayMembers.length}, weekStatsCount=${weekStatsList.length}`);
-
-  // 3. 获取团队基本信息 (baseInfo)
-  const teamInfoRes = await db.collection('teams').doc(teamId).get();
-  const teamInfo = teamInfoRes.data;
-
-  // 处理周统计数据
+  // 3. 组装趋势图
   const statsMap = {};
-  weekStatsList.forEach(item => {
+  (statsRes.list || []).forEach(item => {
     statsMap[item._id] = item.officeCount;
   });
 
-  const weeklyStats = weekDates.map(date => ({
+  const trend = dateList.map(date => ({
     date,
     officeCount: statsMap[date] || 0,
     totalCount: totalMembers,
     ratio: totalMembers > 0 ? (statsMap[date] || 0) / totalMembers : 0
   }));
 
-  // 计算 bestDay
+  // 4. 计算 Best Day
   let bestDay = { dayName: '', count: 0 };
   let maxCount = -1;
   const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-  
-  weeklyStats.forEach((stat, index) => {
+  trend.forEach((stat, index) => {
     if (stat.officeCount > maxCount) {
       maxCount = stat.officeCount;
       bestDay = {
@@ -386,16 +365,16 @@ async function getTeamDetail(myUserId, { teamId, refDate }) {
     }
   });
 
-  // 处理 Top Worker
+  // 5. 组装 Top Worker
   let topWorker = null;
-  if (topWorkerRes.list.length > 0) {
-    const winner = topWorkerRes.list[0];
-    const winnerInfo = members.find(m => m.userId === winner._id);
+  if (topWorkerRes.list && topWorkerRes.list.length > 0) {
+    const winnerId = topWorkerRes.list[0]._id;
+    const winnerInfo = membersRes.data.find(m => m.userId === winnerId);
     if (winnerInfo) {
       topWorker = {
         name: winnerInfo.nickName || '神秘人',
         avatar: winnerInfo.avatarUrl || '',
-        count: winner.count
+        count: topWorkerRes.list[0].count
       };
     }
   }
@@ -403,21 +382,11 @@ async function getTeamDetail(myUserId, { teamId, refDate }) {
   return {
     code: 200,
     data: {
-      baseInfo: {
-        teamId: teamInfo._id, // Add teamId here
-        name: teamInfo.name,
-        inviteCode: teamInfo.inviteCode,
-        ownerId: teamInfo.ownerId,
-        createdAt: teamInfo.createdAt, // 新增：创建时间
-        updatedAt: teamInfo.updatedAt
-      },
-      members: todayMembers, // 今日成员列表（含状态）
-      summary: {
-        weeklyTrend: weeklyStats, // 包含 ratio, officeCount 等
-        bestDay: bestDay,
-        topWorker: topWorker,
-        totalMembers: totalMembers
-      }
+      dimension,
+      trend,
+      bestDay,
+      topWorker,
+      totalMembers
     }
   };
 }
