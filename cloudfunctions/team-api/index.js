@@ -225,7 +225,7 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
     .where({ teamId })
     .limit(100)
     .get();
-  
+  console.log('membersRes:', membersRes);
   const members = membersRes.data;
   const memberIds = members.map(m => m.userId);
 

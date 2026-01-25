@@ -26,9 +26,10 @@ export default function Team() {
 
   const getStartOfWeek = (date) => {
     const d = new Date(date)
-    const day = d.getDay()
-    const diff = d.getDate() - day // Go back to Sunday (0)
+    const day = d.getDay() // 0 is Sunday
+    const diff = d.getDate() - day // Adjust to Sunday
     d.setDate(diff)
+    d.setHours(0, 0, 0, 0) // Normalize time
     return d
   }
   
@@ -45,8 +46,9 @@ export default function Team() {
   // Modal States
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [inviteCode, setInviteCode] = useState('')
+  const [inviteCode, setInviteCode] = useState('') // Reverted to string
   const [newTeamName, setNewTeamName] = useState('')
+  // Removed refs and focusIndex
 
   const todayIndex = getDayIndex(new Date())
 
@@ -170,6 +172,18 @@ export default function Team() {
         // Fetch Detail for Initial Load
         await fetchTeamDetail(targetTeam.teamId)
 
+        // Fetch Today's Attendance explicitly for initial view
+        const now = new Date();
+        // Use local date string construction to avoid UTC issues
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
+        console.log('Fetching attendance for:', todayStr)
+        const attendanceRes = await getDailyAttendance(targetTeam.teamId, todayStr)
+        updateMembersList(attendanceRes.members)
+
         setViewState('active')
       } else {
         // State Transition: Loading -> Empty
@@ -252,10 +266,14 @@ export default function Team() {
       
       try {
         // Calculate target date based on currentWeekStart
+        // index 0 = Sunday, 1 = Monday, etc.
         const targetDate = new Date(currentWeekStart)
-        targetDate.setDate(targetDate.getDate() + index)
+        targetDate.setDate(targetDate.getDate() + index + 1)
         const dateStr = targetDate.toISOString().split('T')[0]
 
+        // Add 1ms to currentWeekStart to prevent stale closure issues if needed,
+        // but fetching with dateStr is reliable.
+        
         const res = await getDailyAttendance(currentTeam.teamId, dateStr)
         updateMembersList(res.members)
         
@@ -314,8 +332,19 @@ export default function Team() {
             setCurrentTeam(myTeams[index])
         } else {
             // "Join New Team" clicked
-            setShowJoinModal(true)
+            // Ensure state update happens after ActionSheet closes to avoid conflict
+            // In Taro, ActionSheet callback might fire before animation ends
+            // 300ms is usually safe, but let's try a different approach:
+            // Force re-render cycle or use nextTick if available (Taro.nextTick)
+            
+            // Standard setTimeout
+            setTimeout(() => {
+                setShowJoinModal(true)
+            }, 350)
         }
+      },
+      fail: (res) => {
+          console.log(res.errMsg)
       }
     })
   }
@@ -339,7 +368,7 @@ export default function Team() {
            Taro.showToast({ title: '加入成功', icon: 'success' })
            setShowJoinModal(false)
            setPreviewTeam(null)
-           setInviteCode(['', '', '', '', '', ''])
+           setInviteCode('')
            
            // Trigger Reload
            handleReload()
@@ -351,25 +380,25 @@ export default function Team() {
     }
 
     // Otherwise, verify code and fetch preview
-    const code = inviteCode.join('')
+    const code = inviteCode
     if (code.length < 6) {
-       Taro.showToast({ title: '请输入6位邀请码', icon: 'none' })
+       Taro.showToast({ title: '请输入6位团队邀请码', icon: 'none' })
        return
     }
     
     Taro.showLoading({ title: '验证中...' })
     try {
+       console.log('Validating invite code:', code);
        const res = await getTeamByInviteCode(code)
        Taro.hideLoading()
+       const data = {...res}
        
-       if (res.data.isJoined) {
-           Taro.showToast({ title: '你已经在这个团队了', icon: 'none' })
-           return
-       }
-       
-       // Show Preview
-       setPreviewTeam(res.data)
+       // Use functional update to ensure no stale closure issues
+       setPreviewTeam(prev => {
+           return {...data};
+       })
     } catch (err) {
+       console.error('Validation error:', err);
        Taro.hideLoading()
        Taro.showToast({ title: err.message || '验证失败', icon: 'none' })
     }
@@ -378,7 +407,7 @@ export default function Team() {
   const handleCloseJoinModal = () => {
       setShowJoinModal(false)
       setPreviewTeam(null)
-      setInviteCode(['', '', '', '', '', ''])
+      setInviteCode('')
   }
 
   const handleCreateConfirm = async () => {
@@ -452,6 +481,7 @@ export default function Team() {
   const changeWeek = (days) => {
       const newStart = new Date(currentWeekStart)
       newStart.setDate(newStart.getDate() + days)
+      newStart.setHours(0, 0, 0, 0) // Normalize time
       setCurrentWeekStart(newStart)
 
       // Determine target date (same day of week in new week)
@@ -479,6 +509,19 @@ export default function Team() {
         
         // Trigger refresh
         await refreshTeams(true)
+
+        // Fetch Today's Attendance explicitly for refresh
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        if (currentTeam) {
+           const attendanceRes = await getDailyAttendance(currentTeam.teamId, todayStr)
+           updateMembersList(attendanceRes.members)
+        }
+
         isLoaded.current = true // Mark as loaded again
         
         Taro.showToast({ title: '刷新成功', icon: 'success' })
@@ -688,7 +731,13 @@ export default function Team() {
       )
   }
 
-  const renderModals = () => (
+  const renderModals = () => {
+      // Move modal rendering logic to top level if possible, but here it's fine.
+      // Ensure z-index in SCSS is high enough.
+      // Check if conditional rendering is correct.
+      if (!showJoinModal && !showCreateModal) return null;
+      
+      return (
       <>
          {/* Join Modal */}
          {showJoinModal && (
@@ -723,20 +772,13 @@ export default function Team() {
                         <Text className='modal-subtitle'>请输入6位团队邀请码</Text>
                     </View>
                     
-                    <View className='code-input-container'>
-                        {inviteCode.map((char, index) => (
-                            <Input 
-                                key={index}
-                                className={`code-input-box ${focusIndex === index ? 'active' : ''}`}
-                                value={char}
-                                maxlength={1}
-                                focus={focusIndex === index}
-                                onInput={e => handleInviteCodeInput(index, e.detail.value)}
-                                onFocus={() => setFocusIndex(index)}
-                                type='text'
-                            />
-                        ))}
-                    </View>
+                    <Input 
+                        className='modal-input' 
+                        placeholder='请输入6位团队邀请码' 
+                        value={inviteCode}
+                        onInput={e => setInviteCode(e.detail.value.toUpperCase())}
+                        maxlength={6}
+                    />
 
                     <View className='modal-actions'>
                         <Button className='modal-btn confirm' onClick={handleJoinConfirm}>下一步</Button>
@@ -769,7 +811,8 @@ export default function Team() {
            </View>
          )}
       </>
-  )
+      )
+  }
 
   // --- Main Render ---
   switch(viewState) {
