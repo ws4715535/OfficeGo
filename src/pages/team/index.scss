@@ -195,8 +195,43 @@ $color-white-fixed: #FFFFFF; // Fallback definition
   .section-header-row {
     display: flex;
     align-items: center;
-    gap: $spacing-md;
+    justify-content: space-between; // Change to space-between
     padding-left: $spacing-xs;
+    margin-bottom: $spacing-sm; // Add some spacing below header
+    
+    .date-range-control {
+      display: flex;
+      align-items: center;
+      background: #F3F4F6;
+      border-radius: 999px;
+      padding: 6rpx 12rpx;
+      gap: 8rpx;
+
+      .arrow-btn {
+        padding: 8rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.4;
+        
+        &:active {
+          opacity: 1;
+        }
+
+        .icon {
+          width: 24rpx;
+          height: 24rpx;
+        }
+      }
+
+      .date-range {
+        font-size: 24rpx;
+        color: $color-text-sub;
+        font-weight: 500;
+        min-width: 140rpx; // Ensure width doesn't jump
+        text-align: center;
+      }
+    }
   }
 
   .section-title {
@@ -204,12 +239,10 @@ $color-white-fixed: #FFFFFF; // Fallback definition
     font-weight: $font-weight-bold;
     color: $color-text-main;
   }
+  
+  // Remove old .date-range if it conflicts or is redundant
+  // .date-range { ... } 
 
-  .date-range {
-    font-size: $font-sm;
-    color: $color-text-sub;
-    font-weight: normal;
-  }
   .member-count {
     font-size: $font-sm;
     color: $color-text-sub;

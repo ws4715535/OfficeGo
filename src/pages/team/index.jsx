@@ -9,6 +9,8 @@ import downIcon from '../../assets/down.png'
 import addIcon from '../../assets/add.png'
 import settingIcon from '../../assets/setting.png'
 import grassIcon from '../../assets/grass.png'
+import leftIcon from '../../assets/left.png'
+import rightIcon from '../../assets/right.png'
 import './index.scss'
 
 export default function Team() {
@@ -21,13 +23,23 @@ export default function Team() {
     const day = date.getDay()
     return day === 0 ? 6 : day - 1
   }
+
+  const getStartOfWeek = (date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - (day === 0 ? 6 : day - 1)
+    d.setDate(diff)
+    return d
+  }
   
-  const [selectedDay, setSelectedDay] = useState(getDayIndex(new Date())) 
+  const [selectedDay, setSelectedDay] = useState(getDayIndex(new Date()))
+  const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date()))
   const [members, setMembers] = useState([])
   const [weeklyStats, setWeeklyStats] = useState([])
   const [bestDayInfo, setBestDayInfo] = useState({ dayName: '暂无数据', count: 0, desc: '本周还没有足够的数据来预测黄金日' })
   const [topWorker, setTopWorker] = useState(null)
   const [membersLoading, setMembersLoading] = useState(false)
+  const [weekStatsLoading, setWeekStatsLoading] = useState(false)
   const lastLoadedTeamId = useRef(null)
   
   // Modal States
@@ -170,9 +182,13 @@ export default function Team() {
   }
 
   // 3. Fetch Team Detail (Initial Load - Big Manager)
-  const fetchTeamDetail = async (teamId) => {
+  const fetchTeamDetail = async (teamId, refDate = null) => {
       try {
-          const res = await getTeamDetail(teamId)
+          if (refDate) {
+              setWeekStatsLoading(true)
+              setMembersLoading(true)
+          }
+          const res = await getTeamDetail(teamId, refDate)
           console.log('Team Detail Response:', res)
           const { members, summary } = res
           
@@ -196,9 +212,9 @@ export default function Team() {
           // Update Top Worker
           setTopWorker(summary.topWorker)
           
-          // Cache Data
+          // Cache Data (Only if default week)
           const userId = Taro.getStorageSync('userId')
-          if (userId) {
+          if (userId && !refDate) {
              const cacheKey = `team_detail_${userId}_${teamId}`
              Taro.setStorageSync(cacheKey, {
                 teamId,
@@ -207,27 +223,18 @@ export default function Team() {
                 summary
              })
              console.log('Cache saved:', cacheKey)
-          } else {
-            console.log('No userId found, cache not saved')
           }
           
-          lastLoadedTeamId.current = teamId // Update Ref
-          
-          // Reset selection to today ONLY if not manually selected
-          // 逻辑优化：如果用户从未手动选择过（selectedDay 仍为初始值或 null），或者需要强制重置，才重置为 todayIndex。
-          // 但这里的需求是：“如果已经选中了某个bar，不应该恢复到当天”。
-          // 我们可以通过一个 ref 来记录用户是否手动交互过，或者更简单地：
-          // 每次 fetchDetail 后，保持当前的 selectedDay 不变。
-          // 只有当 selectedDay 与当前周不匹配时（例如跨周了），才重置。
-          // 鉴于目前逻辑都是基于本周的 index (0-6)，只要还在本周内，index 就是有效的。
-          // 所以直接注释掉重置逻辑，或者只在初始化时设置一次。
-          
-          // 如果当前 selectedDay 无效（比如刚初始化），则设为 todayIndex
-          // 但由于 state 初始化时已经设为 todayIndex，所以这里其实可以完全移除重置逻辑，
-          // 让 selectedDay 保持当前状态。
-          // setSelectedDay(todayIndex) 
+          if (!refDate) {
+              lastLoadedTeamId.current = teamId // Update Ref only for main load
+          }
       } catch (err) {
           console.error('Fetch team detail failed', err)
+      } finally {
+          if (refDate) {
+              setWeekStatsLoading(false)
+              setMembersLoading(false)
+          }
       }
   }
 
@@ -238,12 +245,9 @@ export default function Team() {
       setMembersLoading(true) // Local loading
       
       try {
-        const now = new Date()
-        const currentDayIndex = getDayIndex(now) // 0-6
-        const diff = index - currentDayIndex
-        
-        const targetDate = new Date(now)
-        targetDate.setDate(now.getDate() + diff)
+        // Calculate target date based on currentWeekStart
+        const targetDate = new Date(currentWeekStart)
+        targetDate.setDate(targetDate.getDate() + index)
         const dateStr = targetDate.toISOString().split('T')[0]
 
         const res = await getTeamStatus(currentTeam.teamId, dateStr)
@@ -389,19 +393,25 @@ export default function Team() {
   )
 
   const getWeekDateRange = () => {
-    const now = new Date()
-    const currentDayIndex = getDayIndex(now) // 0 (Mon) - 6 (Sun)
-    
-    // Calculate Monday
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - currentDayIndex)
-    
-    // Calculate Sunday
+    const monday = new Date(currentWeekStart)
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
     
     const formatDate = (date) => `${date.getMonth() + 1}月${date.getDate()}日`
     return `${formatDate(monday)}-${formatDate(sunday)}`
+  }
+
+  const changeWeek = (days) => {
+      const newStart = new Date(currentWeekStart)
+      newStart.setDate(newStart.getDate() + days)
+      setCurrentWeekStart(newStart)
+
+      // Determine target date (same day of week in new week)
+      const targetDate = new Date(newStart)
+      targetDate.setDate(newStart.getDate() + selectedDay)
+      const dateStr = targetDate.toISOString().split('T')[0]
+      
+      fetchTeamDetail(currentTeam.teamId, dateStr)
   }
 
   const handleRefresh = async () => {
@@ -417,6 +427,7 @@ export default function Team() {
         
         // Reset day selection to today
         setSelectedDay(todayIndex)
+        setCurrentWeekStart(getStartOfWeek(new Date()))
         
         // Trigger refresh
         await refreshTeams(true)
@@ -521,33 +532,44 @@ export default function Team() {
           <View className='section-container'>
             <View className='section-header-row'>
               <Text className='section-title'>Office Day趋势</Text>
-              <Text className='date-range'>{getWeekDateRange()}</Text>
+              <View className='date-range-control'>
+                  <View className='arrow-btn' onClick={() => changeWeek(-7)}>
+                      <Image src={leftIcon} className='icon' />
+                  </View>
+                  <Text className='date-range'>{getWeekDateRange()}</Text>
+                  <View className='arrow-btn' onClick={() => changeWeek(7)}>
+                      <Image src={rightIcon} className='icon' />
+                  </View>
+              </View>
             </View>
             
             <View className='week-chart'>
-              {weekLabels.map((label, index) => {
-                const stat = weeklyStats[index] || { ratio: 0 }
-                // Height calculation: 
-                // Min height 10% so bar is visible/clickable even if 0
-                // Max height 100%
-                const barHeight = stat.ratio > 0 ? `${stat.ratio * 100}%` : '5%'
-                
-                return (
-                <View 
-                  key={index} 
-                  className={`day-column ${selectedDay === index ? 'active' : ''}`}
-                  onClick={() => handleDayClick(index)}
-                >
-                  <View className='bar-container'>
-                    <View 
-                      className='bar' 
-                      style={{ height: barHeight }} 
-                    />
+              {weekStatsLoading ? (
+                  <View className='chart-skeleton' style={{ display: 'flex', justifyContent: 'space-between', padding: '20rpx 0', height: '160rpx', alignItems: 'flex-end' }}>
+                      {[1,2,3,4,5,6,7].map(i => <Skeleton key={i} width={pxTransform(24)} height={pxTransform(100)} animated />)}
                   </View>
-                  <Text className='day-label'>{label}</Text>
-                  {index === todayIndex && <View className='today-dot' />}
-                </View>
-              )})}
+              ) : (
+                  weekLabels.map((label, index) => {
+                    const stat = weeklyStats[index] || { ratio: 0 }
+                    const barHeight = stat.ratio > 0 ? `${stat.ratio * 100}%` : '5%'
+                    
+                    return (
+                    <View 
+                      key={index} 
+                      className={`day-column ${selectedDay === index ? 'active' : ''}`}
+                      onClick={() => handleDayClick(index)}
+                    >
+                      <View className='bar-container'>
+                        <View 
+                          className='bar' 
+                          style={{ height: barHeight }} 
+                        />
+                      </View>
+                      <Text className='day-label'>{label}</Text>
+                      {index === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() && <View className='today-dot' />}
+                    </View>
+                  )})
+              )}
             </View>
           </View>
 
@@ -555,7 +577,7 @@ export default function Team() {
           <View className='section-container'>
             <View className='list-header'>
               <Text className='section-title'>
-                谁在 Office ({selectedDay === todayIndex ? '今天' : weekLabels[selectedDay]})
+                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : weekLabels[selectedDay]})
                 <Text className='member-count'>（{members.filter(m => m.status === 'OFFICE').length}人）</Text>
               </Text>
             </View>

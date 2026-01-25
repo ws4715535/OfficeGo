@@ -227,10 +227,13 @@ async function getTeamStatus(myUserId, { teamId, dateStr }) {
 }
 
 // 5. 获取团队详情 (大管家：首屏加载)
-async function getTeamDetail(myUserId, { teamId }) {
+async function getTeamDetail(myUserId, { teamId, refDate }) {
   console.log(`[TeamAPI] Version: Fix-Scope-v2`);
-  console.log(`[TeamAPI] getTeamDetail Start: teamId=${teamId}`);
-  const now = new Date();
+  console.log(`[TeamAPI] getTeamDetail Start: teamId=${teamId}, refDate=${refDate}`);
+  
+  // Use refDate if provided, otherwise use current time
+  const now = refDate ? new Date(refDate) : new Date();
+  
   // 计算本周周一
   const day = now.getDay(); 
   const diff = now.getDate() - (day === 0 ? 6 : day - 1); 
