@@ -4,6 +4,7 @@ import { getMonthDaysStatus, isWorkDay } from '../services/core';
 import { saveRecord, getRecord, getAllRecords } from '../services/storage';
 import { RECORD_TYPES } from '../constants/config';
 import AttendanceService from '../services/attendance';
+import { EventBus, EVENTS } from '../services/eventBus'; // Import EventBus
 import Taro from '@tarojs/taro';
 
 export const useCalendar = () => {
@@ -66,7 +67,10 @@ export const useCalendar = () => {
     // 2. Queue for Cloud Sync
     pendingChanges.current[dateStr] = status;
     
-    // 3. Debounce Cloud Call (0.5 seconds)
+    // 3. Emit Event for Cross-Page Sync
+    EventBus.emit(EVENTS.ATTENDANCE_UPDATED, { date: dateStr, status });
+
+    // 4. Debounce Cloud Call (0.5 seconds)
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }

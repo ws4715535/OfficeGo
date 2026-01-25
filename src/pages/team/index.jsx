@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
 import { Skeleton, pxTransform, PullToRefresh } from '@nutui/nutui-react-taro'
 import { getMyTeams, getDailyAttendance, getTeamDetail, getTeamStats, joinTeam, createTeam, getTeamByInviteCode } from '../../services/team'
+import { EventBus, EVENTS } from '../../services/eventBus' // Import EventBus
 import EmptyState from './empty/index'
 import AuthService from '../../services/auth'
 import downIcon from '../../assets/down.png'
@@ -51,6 +52,42 @@ export default function Team() {
   // Removed refs and focusIndex
 
   const todayIndex = getDayIndex(new Date())
+
+  // Event Bus Listener for Attendance Updates
+  useEffect(() => {
+    const handleAttendanceUpdate = (data) => {
+        // data: { date: 'YYYY-MM-DD', status: ... }
+        console.log('Received attendance update:', data);
+        
+        if (!currentTeam || !currentTeam.teamId) return;
+
+        // Calculate currently selected date string
+        const targetDate = new Date(currentWeekStart)
+        targetDate.setDate(targetDate.getDate() + selectedDay)
+        const selectedDateStr = targetDate.toISOString().split('T')[0]
+
+        // Only refresh if the updated date matches the currently viewed date
+        // OR if we want to be more robust, we could just refresh if it falls within the current week?
+        // For now, refreshing when it matches the selected day is most critical for the list view.
+        if (data.date === selectedDateStr) {
+            console.log('Refreshing member list due to local update');
+            // Optimistically update current user's status in the list to avoid network lag
+            // But fetching is safer. Let's do a fetch.
+            getDailyAttendance(currentTeam.teamId, selectedDateStr).then(res => {
+                updateMembersList(res.members)
+            }).catch(err => console.error('Background refresh failed', err));
+        }
+        
+        // Also, if we want to update stats (charts), we might need to trigger that too?
+        // Maybe debounce that or only do it if it's significant. 
+        // For now, list consistency is the main requirement.
+    };
+
+    const unsubscribe = EventBus.on(EVENTS.ATTENDANCE_UPDATED, handleAttendanceUpdate);
+    return () => {
+        unsubscribe();
+    };
+  }, [currentTeam, currentWeekStart, selectedDay]) // Re-bind when context changes
 
   // 1. Initial Load (FSM Trigger)
   // Use a flag to ensure initial load happens only once per session
