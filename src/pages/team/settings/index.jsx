@@ -31,6 +31,7 @@ export default function TeamSettings() {
     }
 
     if (cached && cached.baseInfo) {
+       console.log('Fetched team data from cache:', cached)
        updateStateFromData(cached)
     } else {
       // 3. Fetch from API if no cache
@@ -49,7 +50,7 @@ export default function TeamSettings() {
          if (cacheKey) {
              Taro.setStorageSync(cacheKey, newData)
          }
-
+         console.log('Fetched team data:', newData)
          updateStateFromData(newData)
          Taro.hideLoading()
       } catch (err) {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useDidShow } from '@tarojs/taro';
+import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
 import { getSettings, saveRecord, getAllRecords } from '../services/storage';
 import { getMonthStats } from '../services/core';
@@ -27,6 +27,12 @@ export const useDashboard = () => {
 
   // Sync data from cloud
   const syncData = useCallback(async () => {
+    // 0. Check Login Status
+    const userId = Taro.getStorageSync('userId');
+    if (!userId) {
+      return;
+    }
+
     const monthStr = currentDate.format('YYYY-MM');
     try {
       // 1. Fetch latest data from cloud

@@ -60,7 +60,7 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       // Primary style for "Add/Join"
       &.primary {
         background: #EEF2FF; // Light Indigo bg
-        padding: 0 32rpx;
+        padding: 0 5rpx;
         gap: 8rpx;
 
         .icon {
@@ -82,8 +82,8 @@ $color-white-fixed: #FFFFFF; // Fallback definition
       // Icon-only style for "Settings"
       &.icon-only {
         background: $color-white;
-        width: 48rpx; // Square
-        border: 2rpx solid #F3F4F6; // Light border
+        // width: 48rpx; // Square
+        // border: 2rpx solid #F3F4F6; // Light border
         
         .icon {
           width: 24rpx;

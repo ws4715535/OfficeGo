@@ -37,7 +37,10 @@ export default function Settings() {
     // 3. Sync from Cloud
     const syncProfile = async () => {
       try {
+        console.log('[Settings] Syncing user profile from cloud...')
         const userProfile = await AuthService.getUserProfile()
+        console.log('[Settings] Synced profile:', userProfile)
+        
         if (userProfile) {
            // Update User Info
            // Only update state if cloud data exists, otherwise keep local (or empty)
