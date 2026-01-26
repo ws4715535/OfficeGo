@@ -324,6 +324,23 @@
       color: $color-text-main;
     }
 
+    .row-label-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+
+      .text {
+        font-size: $font-base;
+        color: $color-text-main;
+      }
+
+      .info-icon {
+        width: 24rpx;
+        height: 24rpx;
+        margin-left: 8rpx;
+      }
+    }
+
     .row-value {
       font-size: $font-md;
       font-weight: $font-weight-bold;
@@ -343,7 +360,119 @@
   }
 }
 
-/* 4. Action Button */
+/* 5. Info Modal */
+.info-modal {
+  padding: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xs;
+
+    .modal-title {
+      font-size: $font-lg;
+      font-weight: $font-weight-bold;
+      color: $color-text-main;
+    }
+
+    .close-icon {
+      font-size: 40rpx;
+      color: $color-text-sub;
+      padding: 0 16rpx;
+    }
+  }
+
+  .formula-card {
+    background: #F9FAFB;
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    
+    .formula-title {
+      font-size: $font-sm;
+      color: $color-text-sub;
+      margin-bottom: 8rpx;
+      display: block;
+    }
+
+    .formula-text {
+      font-size: $font-sm;
+      color: $color-text-main;
+      font-weight: $font-weight-medium;
+      line-height: 1.5;
+      font-style: italic;
+    }
+  }
+
+  .breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+    padding: $spacing-sm 0;
+
+    .list-title {
+      font-size: $font-md;
+      font-weight: $font-weight-bold;
+      color: $color-text-main;
+      margin-bottom: 8rpx;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: $font-base;
+      color: $color-text-main;
+
+      &.highlight {
+        color: #F59E0B; // Amber-500
+      }
+
+      &.result {
+        font-weight: $font-weight-bold;
+        color: $color-primary;
+      }
+
+      .value {
+        font-family: 'DIN', sans-serif;
+      }
+    }
+
+    .divider-dashed {
+        height: 1px;
+        border-bottom: 1px dashed $color-border;
+        margin: 8rpx 0;
+    }
+  }
+
+  .tips-box {
+    background: #FFFBEB; // Amber-50
+    padding: $spacing-sm;
+    border-radius: $radius-sm;
+
+    .tips-text {
+      font-size: $font-xs;
+      color: #B45309; // Amber-700
+      line-height: 1.4;
+    }
+  }
+
+  .modal-btn {
+    margin-top: $spacing-sm;
+    background: $color-primary;
+    color: #fff;
+    border-radius: $radius-full;
+    font-size: $font-md;
+    font-weight: $font-weight-bold;
+    
+    &::after {
+      border: none;
+    }
+  }
+}
 .bottom-action {
   margin-top: auto;
   padding-bottom: env(safe-area-inset-bottom);

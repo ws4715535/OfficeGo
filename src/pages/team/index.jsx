@@ -338,7 +338,9 @@ export default function Team() {
         }
       },
       fail: (res) => {
-          console.log(res.errMsg)
+        // Ignore cancel error
+        if (res.errMsg && res.errMsg.includes('cancel')) return
+        console.error(res.errMsg)
       }
     })
   }

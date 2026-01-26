@@ -14,7 +14,13 @@ export const useDashboard = () => {
     targetDays: 0,
     officeDays: 0,
     remainingDays: 0,
-    progress: 0
+    progress: 0,
+    breakdown: {
+        totalDays: 0,
+        weekendDays: 0,
+        holidayDays: 0,
+        makeupDays: 0
+    }
   });
 
   const loadStats = useCallback(() => {

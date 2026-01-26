@@ -110,6 +110,24 @@ export const getMonthStats = (year, month, settings) => {
   // 3. effectiveWorkDays = totalWorkDays - leaveDays
   const effectiveWorkDays = Math.max(0, totalWorkDays - leaveDays);
 
+  // Calculate detailed breakdown
+  let weekendDays = 0;
+  let holidayDays = 0;
+  let makeupDays = 0;
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dateStr = startDate.date(i).format('YYYY-MM-DD');
+    const dayInfo = getDayInfo(dateStr);
+    
+    if (dayInfo.isHoliday) {
+        holidayDays++;
+    } else if (dayInfo.isCompWork) {
+        makeupDays++;
+    } else if (isWeekend(dateStr)) {
+        weekendDays++;
+    }
+  }
+
   // 应到天数 = 有效工作日 * 比例
   let targetDaysRaw = effectiveWorkDays * settings.targetRatio;
   let targetDays = 0;
@@ -138,7 +156,14 @@ export const getMonthStats = (year, month, settings) => {
     targetDays,
     officeDays,
     remainingDays,
-    progress
+    progress,
+    // Add detailed breakdown
+    breakdown: {
+        totalDays: daysInMonth,
+        weekendDays,
+        holidayDays,
+        makeupDays
+    }
   };
 };
 

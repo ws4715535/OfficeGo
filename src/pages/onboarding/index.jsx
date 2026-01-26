@@ -365,7 +365,7 @@ export default function Onboarding() {
       </View>
       
       <View className='bottom-area'>
-        <Button className='action-btn' onClick={handleComplete}>开启我的足迹 →</Button>
+        <Button className='action-btn' onClick={handleComplete}>Office Go →</Button>
       </View>
     </View>
   )

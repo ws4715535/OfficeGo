@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react'
 import Taro, { useDidShow, useReady } from '@tarojs/taro'
 import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
+import { Popup } from '@nutui/nutui-react-taro'
 import settingIcon from '../../assets/setting.png'
 import statisticIcon from '../../assets/statistic.png'
 import timeIcon from '../../assets/time.png'
 import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
+import infoIcon from '../../assets/info.png'
 import { useDashboard } from '../../hooks/useDashboard'
 import AuthService from '../../services/auth'
 import './index.scss'
@@ -15,6 +17,7 @@ import './index.scss'
 export default function Index() {
   const { year, month, stats } = useDashboard()
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
+  const [showInfoModal, setShowInfoModal] = useState(false)
 
   useReady(async () => {
     // 0. Check Login Status first
@@ -154,7 +157,17 @@ export default function Index() {
             <View className='icon-box blue'>           
            <Image src={timeIcon} style={{ width: '48rpx', height: '48rpx' }} />
             </View>
-            <Text className='row-label'>本月有效工作日</Text>
+            <View className='row-label-wrapper'>
+              <Text className='text'>本月有效工作日</Text>
+              <Image 
+                src={infoIcon} 
+                className='info-icon' 
+                onClick={(e) => {
+                   e.stopPropagation()
+                   setShowInfoModal(true)
+                 }} 
+              />
+            </View>
             <View className='row-value'>
               {stats.effectiveWorkDays !== stats.totalWorkDays && (
                 <Text className='original-value'>{stats.totalWorkDays} 天</Text>
@@ -192,6 +205,30 @@ export default function Index() {
           <Text>更新打卡/请假记录</Text>
         </Button>
       </View>
+
+      <Popup 
+        visible={showInfoModal} 
+        position="bottom" 
+        onClose={() => { setShowInfoModal(false) }}
+        round
+      >
+        <View className='info-modal'>
+            <View className='modal-header'>
+                <Text className='modal-title'>有效工作日计算说明</Text>
+                <View className='close-icon' onClick={() => setShowInfoModal(false)}>×</View>
+            </View>
+            
+            <View className='formula-card'>
+                <Text className='formula-text'>
+                    本月有效工作日 = (本月总天数 - 周末 - 公共假期 - 个人请假 + 补班)
+                </Text>
+            </View>
+
+            <View className='tips-box'>
+                <Text className='tips-text'>注：系统会自动排除节假日并计入法定补班日，确保你的到岗目标准确公平。</Text>
+            </View>
+        </View>
+      </Popup>
     </View>
   )
 }

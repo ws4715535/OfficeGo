@@ -291,6 +291,7 @@ export default function Settings() {
         </View>
       </View>
 
+      {process.env.NODE_ENV === 'development' && (
       <View className='config-card debug-card'>
         <View className='config-item'>
           <View className='item-header'>
@@ -334,6 +335,7 @@ export default function Settings() {
           </Button>
         </View>
       </View>
+      )}
 
       <Button className='save-btn' onClick={handleSave}>
         保存并返回

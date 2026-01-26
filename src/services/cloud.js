@@ -11,7 +11,7 @@ export const initCloudBase = () => {
 
   // 1. Init Taro/WeChat Cloud
   Taro.cloud.init({
-    env: "dev-2g131pqic0b2596c",
+    env: CLOUD_ENV_ID, // 从 config 中注入的环境变量
     traceUser: true,
   })
 

@@ -1,6 +1,12 @@
 
 
 export default {
+  env: {
+    NODE_ENV: '"production"'
+  },
+  defineConstants: {
+    CLOUD_ENV_ID: '"prod-6gwb201339e45c6a"'
+  },
   mini: {},
   h5: {
     /**

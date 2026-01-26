@@ -249,7 +249,7 @@ export default function TeamSettings() {
               <View className='info'>
                 <View className='name-row'>
                   <Text className='name'>{member.name}</Text>
-                  {member.role === 'admin' && <Text className='admin-badge'>👑 超级管理员</Text>}
+                  {member.role === 'admin' && <Text className='admin-badge'>👑 管理员</Text>}
                 </View>
                 <Text className='role-text'>{member.role === 'admin' ? '管理员' : '核心成员'}</Text>
               </View>
