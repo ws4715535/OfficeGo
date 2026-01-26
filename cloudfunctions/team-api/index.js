@@ -260,12 +260,31 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   });
 
   // 第三步：数据组装
+  // --- Sync Check & Write Back ---
+  // Sync Logic: Check if team_members data is outdated and update it
+  const syncUpdates = [];
+
   const resultList = [];
   members.forEach(m => {
     // Merge latest user info if available
     const latestUser = userMap[m.userId] || {};
     const finalNickName = latestUser.nickName || m.nickName || 'Unknown';
     const finalAvatarUrl = latestUser.avatarUrl || m.avatarUrl || '';
+
+    // Check if sync is needed
+    if ((latestUser.nickName && latestUser.nickName !== m.nickName) || 
+        (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl)) {
+        
+        // Push update promise
+        syncUpdates.push(
+            db.collection('team_members').doc(m._id).update({
+                data: {
+                    nickName: latestUser.nickName,
+                    avatarUrl: latestUser.avatarUrl
+                }
+            })
+        );
+    }
 
     const status = attendanceMap[m.userId];
     // Always include member even if no status (status will be undefined -> unknown)
@@ -304,6 +323,17 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   const sortScore = { 'office': 4, 'remote': 3, 'leave': 2, 'unknown': 1 };
   resultList.sort((a, b) => (sortScore[b.status] || 0) - (sortScore[a.status] || 0));
 
+  // Execute sync updates in background
+  if (syncUpdates.length > 0) {
+      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members in DailyAttendance...`);
+      try {
+          await Promise.all(syncUpdates);
+          console.log('[Sync] Update complete');
+      } catch (e) {
+          console.error('[Sync] Update failed', e);
+      }
+  }
+
   return { 
     code: 200, 
     data: {
@@ -324,24 +354,57 @@ async function getTeamDetail(myUserId, { teamId }) {
   // 2. 获取成员列表 (不带今日状态，只带基础信息)
   const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
   
-  // --- Sync Check: Fetch latest user info from 'users' collection ---
+  // --- Sync Check & Write Back ---
   const memberIds = membersRes.data.map(m => m.userId);
   const usersRes = await db.collection('users').where({ _openid: _.in(memberIds) }).get();
   const userMap = {};
   usersRes.data.forEach(u => { userMap[u._openid] = u; });
-  // ------------------------------------------------------------------
-
+  
+  // Sync Logic: Check if team_members data is outdated and update it
+  const syncUpdates = [];
+  
   const members = membersRes.data.map(m => {
     const latestUser = userMap[m.userId] || {};
+    const finalNickName = latestUser.nickName || m.nickName || 'Unknown';
+    const finalAvatarUrl = latestUser.avatarUrl || m.avatarUrl || '';
+    
+    // Check if sync is needed
+    if ((latestUser.nickName && latestUser.nickName !== m.nickName) || 
+        (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl)) {
+        
+        // Push update promise
+        syncUpdates.push(
+            db.collection('team_members').doc(m._id).update({
+                data: {
+                    nickName: latestUser.nickName,
+                    avatarUrl: latestUser.avatarUrl
+                }
+            })
+        );
+    }
+
     return {
         userId: m.userId,
-        name: latestUser.nickName || m.nickName || 'Unknown',
-        avatar: latestUser.avatarUrl || m.avatarUrl || '',
+        name: finalNickName,
+        avatar: finalAvatarUrl,
         role: m.role || 'member',
         isMe: m.userId === myUserId,
         joinedAt: m.joinedAt
     };
   });
+  
+  // Execute sync updates in background (await them to ensure completion in cloud function)
+  if (syncUpdates.length > 0) {
+      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members...`);
+      try {
+          await Promise.all(syncUpdates);
+          console.log('[Sync] Update complete');
+      } catch (e) {
+          console.error('[Sync] Update failed', e);
+      }
+  }
+
+  // 排序：自己 -> Admin -> 其他
 
   // 排序：自己 -> Admin -> 其他
   members.sort((a, b) => {
