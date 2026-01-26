@@ -16,14 +16,22 @@ export default function Index() {
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
 
   useDidShow(async () => {
-    // Check Onboarding
+    // 1. Check Login Status (Auth)
+    const userId = Taro.getStorageSync('userId')
+    if (!userId) {
+        // Redirect to Onboarding (Login)
+        Taro.reLaunch({ url: '/pages/onboarding/index' })
+        return
+    }
+
+    // 2. Check Onboarding Flag
     const isOnboarded = Taro.getStorageSync('isOnboarded')
     if (!isOnboarded) {
         Taro.reLaunch({ url: '/pages/onboarding/index' })
         return
     }
 
-    // Load User Info
+    // 3. Load User Info
     const localUser = Taro.getStorageSync('userInfo')
     if (localUser) {
         setUserInfo({
