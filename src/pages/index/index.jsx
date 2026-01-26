@@ -1,6 +1,6 @@
-import { View, Text, Button, Image } from '@tarojs/components'
 import React, { useState, useEffect } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useReady } from '@tarojs/taro'
+import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
 import settingIcon from '../../assets/setting.png'
 import statisticIcon from '../../assets/statistic.png'
@@ -9,11 +9,23 @@ import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
 import { useDashboard } from '../../hooks/useDashboard'
+import AuthService from '../../services/auth'
 import './index.scss'
 
 export default function Index() {
   const { year, month, stats } = useDashboard()
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
+
+  useReady(async () => {
+    // 1. Load User Info from Cloud
+    const userData = await AuthService.getUserProfile()
+    if (userData) {
+        setUserInfo({
+            nickName: userData.nickName || 'User',
+            avatarUrl: userData.avatarUrl || ''
+        })
+    }
+  })
 
   useDidShow(async () => {
     // 1. Check Login Status (Auth)
