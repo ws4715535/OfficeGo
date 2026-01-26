@@ -232,15 +232,10 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   const members = membersRes.list.map(m => {
       const user = (m.userInfo && m.userInfo.length > 0) ? m.userInfo[0] : {};
       
-      // Fallback: 如果联表没查到 nickName (可能是老数据)，尝试用 team_members 里的冗余数据 (虽然我们想废弃它，但为了平滑过渡...)
-      // 不，既然我们决定不再维护 redundant data，就应该强制用 user 表。
-      // 问题是，如果 user 表里没有 nickName 怎么办？
-      // 应该是 user 表里一定有。
-      
       return {
           userId: m.userId,
-          name: user.nickName || 'Unknown User', // Ensure this comes from user
-          avatar: user.avatarUrl || '',
+          name: user.nickName || '神秘用户', // Use a clearer default
+          avatar: user.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + m.userId, // Default avatar
           role: m.role
       };
   });
