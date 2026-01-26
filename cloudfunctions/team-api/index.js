@@ -225,9 +225,26 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
     .where({ teamId })
     .limit(100)
     .get();
-  console.log('membersRes:', membersRes);
+  
   const members = membersRes.data;
   const memberIds = members.map(m => m.userId);
+
+  // --- Sync Check: Fetch latest user info from 'users' collection to ensure freshness ---
+  // Ideally, 'team_members' should be kept in sync via updateUser hook, but let's be safe
+  // and do a join query or separate fetch to get latest avatars/nicknames.
+  // Since lookup has limits and might be slow, let's just query 'users' for these IDs.
+  
+  const usersRes = await db.collection('users')
+    .where({
+        _openid: _.in(memberIds)
+    })
+    .get();
+    
+  const userMap = {};
+  usersRes.data.forEach(u => {
+      userMap[u._openid] = u;
+  });
+  // -----------------------------------------------------------------------------------
 
   // 第二步：获取指定日期的考勤状态
   const attendanceRes = await db.collection('attendance_records')
@@ -245,21 +262,46 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   // 第三步：数据组装
   const resultList = [];
   members.forEach(m => {
+    // Merge latest user info if available
+    const latestUser = userMap[m.userId] || {};
+    const finalNickName = latestUser.nickName || m.nickName || 'Unknown';
+    const finalAvatarUrl = latestUser.avatarUrl || m.avatarUrl || '';
+
     const status = attendanceMap[m.userId];
-    if (status) { 
-      resultList.push({
-        userId: m.userId,
-        name: m.nickName || 'Unknown',
-        avatar: m.avatarUrl || '',
-        role: m.role || 'member',
-        status: status,
-        isMe: m.userId === myUserId
-      });
-    }
+    // Always include member even if no status (status will be undefined -> unknown)
+    // Wait, UI filters logic? The original code filtered: "if (status) { push }"
+    // But usually we want to see all members in the list, right?
+    // Let's check UI... The UI filters: "members.filter(m => m.status === 'OFFICE')" for "Who is in Office" section
+    // But maybe we want to return everyone so client can filter?
+    // The previous implementation ONLY returned people with status.
+    // However, if we want to show "All Members" in settings, we need everyone.
+    // This function is "getDailyAttendance", primarily for the main page dashboard.
+    // BUT, let's keep it consistent: return everyone, let frontend decide.
+    // Actually, looking at previous code: "if (status) { ... }"
+    // If I change this, I might break the "Who is in Office" count if frontend relies on array length.
+    // Let's see frontend...
+    // Frontend: "members.filter(m => m.status === 'OFFICE')"
+    // So if I return everyone, those without status will be 'unknown'.
+    // It is SAFER to return everyone, so we can show "Leave" or "Remote" or "Unknown" users too.
+    
+    // Original logic only pushed if status existed?
+    // "if (status) { resultList.push(...) }"
+    // This means if I didn't check in, I am NOT in the list?
+    // That seems wrong for a "Team" page. I should be there, just with "Unknown" status.
+    // Let's fix this to include everyone.
+    
+    resultList.push({
+      userId: m.userId,
+      name: finalNickName,
+      avatar: finalAvatarUrl,
+      role: m.role || 'member',
+      status: status || 'unknown',
+      isMe: m.userId === myUserId
+    });
   });
 
   // 第四步：排序
-  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2 };
+  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2, 'unknown': 1 };
   resultList.sort((a, b) => (sortScore[b.status] || 0) - (sortScore[a.status] || 0));
 
   return { 
@@ -281,14 +323,25 @@ async function getTeamDetail(myUserId, { teamId }) {
 
   // 2. 获取成员列表 (不带今日状态，只带基础信息)
   const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
-  const members = membersRes.data.map(m => ({
-    userId: m.userId,
-    name: m.nickName || 'Unknown',
-    avatar: m.avatarUrl || '',
-    role: m.role || 'member',
-    isMe: m.userId === myUserId,
-    joinedAt: m.joinedAt
-  }));
+  
+  // --- Sync Check: Fetch latest user info from 'users' collection ---
+  const memberIds = membersRes.data.map(m => m.userId);
+  const usersRes = await db.collection('users').where({ _openid: _.in(memberIds) }).get();
+  const userMap = {};
+  usersRes.data.forEach(u => { userMap[u._openid] = u; });
+  // ------------------------------------------------------------------
+
+  const members = membersRes.data.map(m => {
+    const latestUser = userMap[m.userId] || {};
+    return {
+        userId: m.userId,
+        name: latestUser.nickName || m.nickName || 'Unknown',
+        avatar: latestUser.avatarUrl || m.avatarUrl || '',
+        role: m.role || 'member',
+        isMe: m.userId === myUserId,
+        joinedAt: m.joinedAt
+    };
+  });
 
   // 排序：自己 -> Admin -> 其他
   members.sort((a, b) => {
