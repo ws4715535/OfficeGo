@@ -231,10 +231,16 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   
   const members = membersRes.list.map(m => {
       const user = (m.userInfo && m.userInfo.length > 0) ? m.userInfo[0] : {};
+      
+      // Fallback: 如果联表没查到 nickName (可能是老数据)，尝试用 team_members 里的冗余数据 (虽然我们想废弃它，但为了平滑过渡...)
+      // 不，既然我们决定不再维护 redundant data，就应该强制用 user 表。
+      // 问题是，如果 user 表里没有 nickName 怎么办？
+      // 应该是 user 表里一定有。
+      
       return {
           userId: m.userId,
-          nickName: user.nickName, // Extract for later use
-          avatarUrl: user.avatarUrl, // Extract for later use
+          name: user.nickName || 'Unknown User', // Ensure this comes from user
+          avatar: user.avatarUrl || '',
           role: m.role
       };
   });
@@ -261,8 +267,8 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
     if (status) { 
       resultList.push({
         userId: m.userId,
-        name: m.nickName || 'Unknown',
-        avatar: m.avatarUrl || '',
+        name: m.name, // Changed from m.nickName to m.name to match map above
+        avatar: m.avatar, // Changed from m.avatarUrl to m.avatar to match map above
         role: m.role || 'member',
         status: status,
         isMe: m.userId === myUserId
