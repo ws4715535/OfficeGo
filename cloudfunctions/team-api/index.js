@@ -226,6 +226,11 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
       foreignField: '_openid',
       as: 'userInfo'
     })
+    .project({
+        userId: 1,
+        role: 1,
+        userInfo: 1
+    })
     .limit(200)
     .end();
   
@@ -300,6 +305,12 @@ async function getTeamDetail(myUserId, { teamId }) {
       localField: 'userId', // 关联键: team_members.userId (存储的是 openid)
       foreignField: '_openid', // 目标键: users._openid
       as: 'userInfo'
+    })
+    .project({
+        userId: 1,
+        role: 1,
+        joinedAt: 1,
+        userInfo: 1
     })
     .limit(200) // 增加限制防止爆炸，暂定200
     .end();
@@ -383,6 +394,11 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
         localField: 'userId',
         foreignField: '_openid',
         as: 'userInfo'
+    })
+    .project({
+        userId: 1,
+        role: 1,
+        userInfo: 1
     })
     .limit(200)
     .end();
