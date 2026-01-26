@@ -464,7 +464,54 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
 
   // 1. 获取本周所有 office 记录
   const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
+  
+  // --- Sync Check & Write Back ---
   const memberIds = membersRes.data.map(m => m.userId);
+  const usersRes = await db.collection('users').where({ _openid: _.in(memberIds) }).get();
+  const userMap = {};
+  usersRes.data.forEach(u => { userMap[u._openid] = u; });
+  
+  // Sync Logic: Check if team_members data is outdated and update it
+  const syncUpdates = [];
+  
+  const updatedMembers = membersRes.data.map(m => {
+      const latestUser = userMap[m.userId] || {};
+      const updatedM = { ...m };
+      let changed = false;
+      
+      if (latestUser.nickName && latestUser.nickName !== m.nickName) {
+          updatedM.nickName = latestUser.nickName;
+          changed = true;
+      }
+      if (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl) {
+          updatedM.avatarUrl = latestUser.avatarUrl;
+          changed = true;
+      }
+      
+      if (changed) {
+          syncUpdates.push(
+              db.collection('team_members').doc(m._id).update({
+                  data: {
+                      nickName: updatedM.nickName,
+                      avatarUrl: updatedM.avatarUrl
+                  }
+              })
+          );
+      }
+      return updatedM;
+  });
+
+  // Execute sync updates in background
+  if (syncUpdates.length > 0) {
+      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members in TeamStats...`);
+      try {
+          await Promise.all(syncUpdates);
+      } catch (e) {
+          console.error('[Sync] Update failed', e);
+      }
+  }
+  // ------------------------------------
+
   const totalMembers = memberIds.length;
 
   const statsRes = await db.collection('attendance_records')
@@ -527,7 +574,8 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   let topWorker = null;
   if (topWorkerRes.list && topWorkerRes.list.length > 0) {
     const winnerId = topWorkerRes.list[0]._id;
-    const winnerInfo = membersRes.data.find(m => m.userId === winnerId);
+    // Use updatedMembers instead of membersRes.data to ensure we use latest info
+    const winnerInfo = updatedMembers.find(m => m.userId === winnerId);
     if (winnerInfo) {
       topWorker = {
         name: winnerInfo.nickName || '神秘人',
