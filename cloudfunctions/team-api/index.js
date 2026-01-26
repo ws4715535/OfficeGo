@@ -103,14 +103,12 @@ async function createTeam(userId, { name, userInfo }) {
 
     const teamId = teamRes._id;
 
-    // B. 将自己加入成员表 (Admin)
+    // B. 将自己加入成员表 (Admin) - 不再冗余存储 userInfo
     await transaction.collection('team_members').add({
       data: {
         teamId,
         userId,
         role: 'admin',
-        nickName: userInfo.nickName || '',
-        avatarUrl: userInfo.avatarUrl || '',
         joinedAt: now
       }
     });
@@ -177,14 +175,12 @@ async function joinTeam(userId, { inviteCode, teamId, userInfo }) {
     return { code: 400, msg: '你已经在该团队中了' };
   }
 
-  // C. 写入成员表
+  // C. 写入成员表 - 不再冗余存储 userInfo
   await db.collection('team_members').add({
     data: {
       teamId: team._id,
       userId, 
       role: 'member',
-      nickName: userInfo.nickName || '',
-      avatarUrl: userInfo.avatarUrl || '',
       joinedAt: new Date()
     }
   });
@@ -221,31 +217,29 @@ async function getMyTeams(userId) {
 async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   // dateStr 格式: "2026-01-23"
   
-  // 第一步：获取团队所有成员
-  const membersRes = await db.collection('team_members')
-    .where({ teamId })
-    .limit(100)
-    .get();
-  
-  const members = membersRes.data;
-  const memberIds = members.map(m => m.userId);
-
-  // --- Sync Check: Fetch latest user info from 'users' collection to ensure freshness ---
-  // Ideally, 'team_members' should be kept in sync via updateUser hook, but let's be safe
-  // and do a join query or separate fetch to get latest avatars/nicknames.
-  // Since lookup has limits and might be slow, let's just query 'users' for these IDs.
-  
-  const usersRes = await db.collection('users')
-    .where({
-        _openid: _.in(memberIds)
+  // 第一步：获取团队所有成员 (使用 lookup 关联 users 表获取最新信息)
+  const membersRes = await db.collection('team_members').aggregate()
+    .match({ teamId })
+    .lookup({
+      from: 'users',
+      localField: 'userId',
+      foreignField: '_openid',
+      as: 'userInfo'
     })
-    .get();
-    
-  const userMap = {};
-  usersRes.data.forEach(u => {
-      userMap[u._openid] = u;
+    .limit(200)
+    .end();
+  
+  const members = membersRes.list.map(m => {
+      const user = (m.userInfo && m.userInfo.length > 0) ? m.userInfo[0] : {};
+      return {
+          userId: m.userId,
+          nickName: user.nickName, // Extract for later use
+          avatarUrl: user.avatarUrl, // Extract for later use
+          role: m.role
+      };
   });
-  // -----------------------------------------------------------------------------------
+  
+  const memberIds = members.map(m => m.userId);
 
   // 第二步：获取指定日期的考勤状态
   const attendanceRes = await db.collection('attendance_records')
@@ -261,79 +255,24 @@ async function getDailyAttendance(myUserId, { teamId, dateStr }) {
   });
 
   // 第三步：数据组装
-  // --- Sync Check & Write Back ---
-  // Sync Logic: Check if team_members data is outdated and update it
-  const syncUpdates = [];
-
   const resultList = [];
   members.forEach(m => {
-    // Merge latest user info if available
-    const latestUser = userMap[m.userId] || {};
-    const finalNickName = latestUser.nickName || m.nickName || 'Unknown';
-    const finalAvatarUrl = latestUser.avatarUrl || m.avatarUrl || '';
-
-    // Check if sync is needed
-    if ((latestUser.nickName && latestUser.nickName !== m.nickName) || 
-        (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl)) {
-        
-        // Push update promise
-        syncUpdates.push(
-            db.collection('team_members').doc(m._id).update({
-                data: {
-                    nickName: latestUser.nickName,
-                    avatarUrl: latestUser.avatarUrl
-                }
-            })
-        );
-    }
-
     const status = attendanceMap[m.userId];
-    // Always include member even if no status (status will be undefined -> unknown)
-    // Wait, UI filters logic? The original code filtered: "if (status) { push }"
-    // But usually we want to see all members in the list, right?
-    // Let's check UI... The UI filters: "members.filter(m => m.status === 'OFFICE')" for "Who is in Office" section
-    // But maybe we want to return everyone so client can filter?
-    // The previous implementation ONLY returned people with status.
-    // However, if we want to show "All Members" in settings, we need everyone.
-    // This function is "getDailyAttendance", primarily for the main page dashboard.
-    // BUT, let's keep it consistent: return everyone, let frontend decide.
-    // Actually, looking at previous code: "if (status) { ... }"
-    // If I change this, I might break the "Who is in Office" count if frontend relies on array length.
-    // Let's see frontend...
-    // Frontend: "members.filter(m => m.status === 'OFFICE')"
-    // So if I return everyone, those without status will be 'unknown'.
-    // It is SAFER to return everyone, so we can show "Leave" or "Remote" or "Unknown" users too.
-    
-    // Original logic only pushed if status existed?
-    // "if (status) { resultList.push(...) }"
-    // This means if I didn't check in, I am NOT in the list?
-    // That seems wrong for a "Team" page. I should be there, just with "Unknown" status.
-    // Let's fix this to include everyone.
-    
-    resultList.push({
-      userId: m.userId,
-      name: finalNickName,
-      avatar: finalAvatarUrl,
-      role: m.role || 'member',
-      status: status || 'unknown',
-      isMe: m.userId === myUserId
-    });
+    if (status) { 
+      resultList.push({
+        userId: m.userId,
+        name: m.nickName || 'Unknown',
+        avatar: m.avatarUrl || '',
+        role: m.role || 'member',
+        status: status,
+        isMe: m.userId === myUserId
+      });
+    }
   });
 
   // 第四步：排序
-  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2, 'unknown': 1 };
+  const sortScore = { 'office': 4, 'remote': 3, 'leave': 2 };
   resultList.sort((a, b) => (sortScore[b.status] || 0) - (sortScore[a.status] || 0));
-
-  // Execute sync updates in background
-  if (syncUpdates.length > 0) {
-      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members in DailyAttendance...`);
-      try {
-          await Promise.all(syncUpdates);
-          console.log('[Sync] Update complete');
-      } catch (e) {
-          console.error('[Sync] Update failed', e);
-      }
-  }
 
   return { 
     code: 200, 
@@ -352,60 +291,32 @@ async function getTeamDetail(myUserId, { teamId }) {
   const teamInfoRes = await db.collection('teams').doc(teamId).get();
   const teamInfo = teamInfoRes.data;
 
-  // 2. 获取成员列表 (不带今日状态，只带基础信息)
-  const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
+  // 2. 获取成员列表 (使用 aggregate + lookup 关联 users 表)
+  const membersRes = await db.collection('team_members').aggregate()
+    .match({ teamId })
+    .lookup({
+      from: 'users',
+      localField: 'userId', // 关联键: team_members.userId (存储的是 openid)
+      foreignField: '_openid', // 目标键: users._openid
+      as: 'userInfo'
+    })
+    .limit(200) // 增加限制防止爆炸，暂定200
+    .end();
   
-  // --- Sync Check & Write Back ---
-  const memberIds = membersRes.data.map(m => m.userId);
-  const usersRes = await db.collection('users').where({ _openid: _.in(memberIds) }).get();
-  const userMap = {};
-  usersRes.data.forEach(u => { userMap[u._openid] = u; });
-  
-  // Sync Logic: Check if team_members data is outdated and update it
-  const syncUpdates = [];
-  
-  const members = membersRes.data.map(m => {
-    const latestUser = userMap[m.userId] || {};
-    const finalNickName = latestUser.nickName || m.nickName || 'Unknown';
-    const finalAvatarUrl = latestUser.avatarUrl || m.avatarUrl || '';
-    
-    // Check if sync is needed
-    if ((latestUser.nickName && latestUser.nickName !== m.nickName) || 
-        (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl)) {
-        
-        // Push update promise
-        syncUpdates.push(
-            db.collection('team_members').doc(m._id).update({
-                data: {
-                    nickName: latestUser.nickName,
-                    avatarUrl: latestUser.avatarUrl
-                }
-            })
-        );
-    }
-
-    return {
+  const members = membersRes.list.map(m => {
+      // 从 lookup 结果中提取用户信息
+      // 注意：lookup 结果是一个数组，正常应该只有一项
+      const user = (m.userInfo && m.userInfo.length > 0) ? m.userInfo[0] : {};
+      
+      return {
         userId: m.userId,
-        name: finalNickName,
-        avatar: finalAvatarUrl,
+        name: user.nickName || 'Unknown', // 优先使用 users 表中的信息
+        avatar: user.avatarUrl || '',
         role: m.role || 'member',
         isMe: m.userId === myUserId,
         joinedAt: m.joinedAt
-    };
+      };
   });
-  
-  // Execute sync updates in background (await them to ensure completion in cloud function)
-  if (syncUpdates.length > 0) {
-      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members...`);
-      try {
-          await Promise.all(syncUpdates);
-          console.log('[Sync] Update complete');
-      } catch (e) {
-          console.error('[Sync] Update failed', e);
-      }
-  }
-
-  // 排序：自己 -> Admin -> 其他
 
   // 排序：自己 -> Admin -> 其他
   members.sort((a, b) => {
@@ -463,55 +374,28 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   }
 
   // 1. 获取本周所有 office 记录
-  const membersRes = await db.collection('team_members').where({ teamId }).limit(100).get();
-  
-  // --- Sync Check & Write Back ---
-  const memberIds = membersRes.data.map(m => m.userId);
-  const usersRes = await db.collection('users').where({ _openid: _.in(memberIds) }).get();
-  const userMap = {};
-  usersRes.data.forEach(u => { userMap[u._openid] = u; });
-  
-  // Sync Logic: Check if team_members data is outdated and update it
-  const syncUpdates = [];
-  
-  const updatedMembers = membersRes.data.map(m => {
-      const latestUser = userMap[m.userId] || {};
-      const updatedM = { ...m };
-      let changed = false;
-      
-      if (latestUser.nickName && latestUser.nickName !== m.nickName) {
-          updatedM.nickName = latestUser.nickName;
-          changed = true;
-      }
-      if (latestUser.avatarUrl && latestUser.avatarUrl !== m.avatarUrl) {
-          updatedM.avatarUrl = latestUser.avatarUrl;
-          changed = true;
-      }
-      
-      if (changed) {
-          syncUpdates.push(
-              db.collection('team_members').doc(m._id).update({
-                  data: {
-                      nickName: updatedM.nickName,
-                      avatarUrl: updatedM.avatarUrl
-                  }
-              })
-          );
-      }
-      return updatedM;
+  // Lookup users info to get latest nickname for Top Worker
+  const membersRes = await db.collection('team_members').aggregate()
+    .match({ teamId })
+    .lookup({
+        from: 'users',
+        localField: 'userId',
+        foreignField: '_openid',
+        as: 'userInfo'
+    })
+    .limit(200)
+    .end();
+    
+  const members = membersRes.list.map(m => {
+      const user = (m.userInfo && m.userInfo.length > 0) ? m.userInfo[0] : {};
+      return {
+          userId: m.userId,
+          nickName: user.nickName,
+          avatarUrl: user.avatarUrl
+      };
   });
-
-  // Execute sync updates in background
-  if (syncUpdates.length > 0) {
-      console.log(`[Sync] Updating ${syncUpdates.length} outdated team members in TeamStats...`);
-      try {
-          await Promise.all(syncUpdates);
-      } catch (e) {
-          console.error('[Sync] Update failed', e);
-      }
-  }
-  // ------------------------------------
-
+  
+  const memberIds = members.map(m => m.userId);
   const totalMembers = memberIds.length;
 
   const statsRes = await db.collection('attendance_records')
@@ -574,8 +458,7 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   let topWorker = null;
   if (topWorkerRes.list && topWorkerRes.list.length > 0) {
     const winnerId = topWorkerRes.list[0]._id;
-    // Use updatedMembers instead of membersRes.data to ensure we use latest info
-    const winnerInfo = updatedMembers.find(m => m.userId === winnerId);
+    const winnerInfo = members.find(m => m.userId === winnerId); // Use mapped members
     if (winnerInfo) {
       topWorker = {
         name: winnerInfo.nickName || '神秘人',

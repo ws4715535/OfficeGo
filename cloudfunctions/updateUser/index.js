@@ -42,32 +42,6 @@ exports.main = async (event, context) => {
       data: updateData
     })
 
-    // --- Sync to team_members ---
-    // If nickName or avatarUrl changed, we need to update all team_members records for this user
-    if (nickName || avatarUrl) {
-        const memberUpdateData = {}
-        if (nickName) memberUpdateData.nickName = nickName
-        if (avatarUrl) memberUpdateData.avatarUrl = avatarUrl
-        
-        // Find all team memberships for this user
-        // Note: team_members uses _openid automatically for 'where' if we don't specify it? 
-        // Wait, cloud functions run with admin privileges usually, but let's be safe.
-        // We need to query by userId (which is usually _openid in our schema logic, or we query by _openid field)
-        
-        try {
-            await db.collection('team_members').where({
-                userId: openid // Our team_members schema uses 'userId' to store openid
-            }).update({
-                data: memberUpdateData
-            })
-            console.log('Synced user info to team_members for openid:', openid)
-        } catch (syncErr) {
-            console.error('Failed to sync user info to team_members:', syncErr)
-            // We don't fail the whole request if sync fails, just log it
-        }
-    }
-    // ----------------------------
-
     return {
       code: 0,
       message: 'User updated',
