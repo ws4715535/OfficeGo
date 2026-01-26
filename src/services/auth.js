@@ -111,19 +111,11 @@ const AuthService = {
 
   /**
    * Get User Profile
-   * 1. Try to read from local cache first
-   * 2. If not found, call cloud function 'getUserProfile'
+   * Always fetch from cloud to ensure data freshness, then update local cache
    */
   getUserProfile: async () => {
     try {
-      // 1. Try local cache
-      const localUser = Taro.getStorageSync('userInfo')
-      if (localUser && localUser.nickName && localUser.avatarUrl) {
-        // Return a promise that resolves to local data to match async interface
-        return localUser
-      }
-
-      // 2. Call cloud function
+      // 1. Call cloud function
       const res = await Taro.cloud.callFunction({
         name: 'getUserProfile'
       })
@@ -133,7 +125,7 @@ const AuthService = {
       if (res.result.code === 0 && res.result.data) {
         const userData = res.result.data
         
-        // Update local storage
+        // 2. Update local storage
         Taro.setStorageSync('userInfo', {
             nickName: userData.nickName,
             avatarUrl: userData.avatarUrl,
@@ -146,7 +138,10 @@ const AuthService = {
       return null
     } catch (error) {
       console.error('AuthService GetProfile Error:', error)
-      // On error, return empty object or null to let caller handle it
+      // On error, try to return local cache as fallback
+      const localUser = Taro.getStorageSync('userInfo')
+      if (localUser) return localUser
+      
       return null
     }
   }
