@@ -183,7 +183,8 @@ async function joinTeam(userId, { inviteCode, teamId, userInfo }) {
       teamId: team._id,
       userId, 
       role: 'member',
-      userInfo,
+      nickName: userInfo.nickName || '',
+      avatarUrl: userInfo.avatarUrl || '',
       joinedAt: new Date()
     }
   });
