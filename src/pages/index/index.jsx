@@ -219,13 +219,45 @@ export default function Index() {
             </View>
             
             <View className='formula-card'>
+                <Text className='formula-title'>计算公式</Text>
                 <Text className='formula-text'>
                     本月有效工作日 = (本月总天数 - 周末 - 公共假期 - 个人请假 + 补班)
                 </Text>
             </View>
 
+            {stats.breakdown && (
+            <View className='breakdown-list'>
+                <Text className='list-title'>{month}月明细数据</Text>
+                <View className='list-item'>
+                    <Text className='label'>本月总天数</Text>
+                    <Text className='value'>{stats.breakdown.totalDays} 天</Text>
+                </View>
+                <View className='list-item'>
+                    <Text className='label'>周末双休</Text>
+                    <Text className='value'>- {stats.breakdown.weekendDays} 天</Text>
+                </View>
+                <View className='list-item'>
+                    <Text className='label'>法定节假日</Text>
+                    <Text className='value'>- {stats.breakdown.holidayDays} 天</Text>
+                </View>
+                <View className='list-item'>
+                    <Text className='label'>法定补班</Text>
+                    <Text className='value'>+ {stats.breakdown.makeupDays} 天</Text>
+                </View>
+                <View className='list-item highlight'>
+                    <Text className='label'>个人请假</Text>
+                    <Text className='value'>- {stats.leaveDays} 天</Text>
+                </View>
+                <View className='divider-dashed' />
+                <View className='list-item result'>
+                    <Text className='label'>理论工作日</Text>
+                    <Text className='value'>{stats.totalWorkDays} 天</Text>
+                </View>
+            </View>
+            )}
+
             <View className='tips-box'>
-                <Text className='tips-text'>注：系统会自动排除节假日并计入法定补班日，确保你的到岗目标准确公平。</Text>
+                <Text className='tips-text'>注：系统会自动排除节假日并计入法定补班日，确保你的到岗目标准确。</Text>
             </View>
         </View>
       </Popup>
