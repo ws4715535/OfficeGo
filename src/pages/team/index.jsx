@@ -111,7 +111,10 @@ export default function Team() {
         try {
             const userId = AuthService.getUserId()
             if (!userId) {
-               await AuthService.login()
+               // 如果有缓存但没 userId (异常情况)，还是需要登录
+               // 重定向到 Onboarding
+               Taro.reLaunch({ url: '/pages/onboarding/index' })
+               return
             }
             // Trigger stats fetch specifically
             // We use refreshTeams(true) which calls fetchTeamDetail
@@ -128,10 +131,9 @@ export default function Team() {
             // 检查登录状态
             const userId = AuthService.getUserId()
             if (!userId) {
-               console.log('User not logged in, login first')
-               // 这里可以根据需求决定是否强制登录，或者跳转登录页
-               // 暂时尝试后台登录一次
-               await AuthService.login()
+               console.log('User not logged in, redirecting to Onboarding')
+               Taro.reLaunch({ url: '/pages/onboarding/index' })
+               return
             }
             await refreshTeams() // Wait for it
             isLoaded.current = true // Mark as loaded
