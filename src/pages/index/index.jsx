@@ -17,6 +17,13 @@ export default function Index() {
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
 
   useReady(async () => {
+    // 0. Check Login Status first
+    const userId = Taro.getStorageSync('userId')
+    if (!userId) {
+        // Not logged in, skip fetching user profile
+        return
+    }
+
     // 1. Load User Info from Cloud
     const userData = await AuthService.getUserProfile()
     if (userData) {

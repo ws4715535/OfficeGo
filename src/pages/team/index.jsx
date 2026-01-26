@@ -90,15 +90,16 @@ export default function Team() {
         // 恢复数据
         updateMembersList(cachedData.members || [])
         // Stats are NOT cached in base info anymore, need to fetch
-        fetchTeamDetail(cachedData.teamId) // This will trigger logic to fetch stats separately if needed, OR we just let it be empty initially and fetch stats?
-        // Actually, the new logic splits fetching. 
-        // If we have cached base info, we show it.
-        // Then we should probably fetch stats in background.
-        
-        // Let's refine this:
-        // We have base info. We need stats.
-        // Call fetchTeamDetail with refDate=null (current week) but skip base info fetch if cached?
-        // Or simpler: just let silent refresh handle it.
+        // BUT FIRST check login status before fetching anything
+        const userId = AuthService.getUserId()
+        if (!userId) {
+           // 如果有缓存但没 userId (异常情况)，还是需要登录
+           // 重定向到 Onboarding
+           Taro.reLaunch({ url: '/pages/onboarding/index' })
+           return
+        }
+
+        fetchTeamDetail(cachedData.teamId) 
         
         // For now, let's clear stats placeholders
         setWeeklyStats([])
@@ -106,16 +107,7 @@ export default function Team() {
         setBestDayInfo({ dayName: '加载中...', count: 0, desc: '正在获取最新数据' })
 
         // 静默刷新（不显示loading）
-        // 只有当缓存的ID和当前页面逻辑需要的ID一致时，才考虑静默刷新
-        // 这里我们可以简单地总是尝试静默刷新以保持数据最新，但避免了loading闪烁
         try {
-            const userId = AuthService.getUserId()
-            if (!userId) {
-               // 如果有缓存但没 userId (异常情况)，还是需要登录
-               // 重定向到 Onboarding
-               Taro.reLaunch({ url: '/pages/onboarding/index' })
-               return
-            }
             // Trigger stats fetch specifically
             // We use refreshTeams(true) which calls fetchTeamDetail
             refreshTeams(true) // silent mode
