@@ -183,6 +183,19 @@ $color-white-fixed: #FFFFFF; // Fallback definition
             font-size: 48rpx; // Slightly smaller for name
         }
     }
+    
+    // Swiper styles
+    .winner-swiper {
+        height: 180rpx; // Adjust based on content height
+        width: 100%;
+        
+        .winner-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+    }
   }
 }
 

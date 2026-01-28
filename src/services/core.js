@@ -162,7 +162,8 @@ export const getMonthStats = (year, month, settings) => {
         totalDays: daysInMonth,
         weekendDays,
         holidayDays,
-        makeupDays
+        makeupDays,
+        targetRatio: settings.targetRatio // Pass ratio to frontend
     }
   };
 };

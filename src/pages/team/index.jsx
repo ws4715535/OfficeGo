@@ -428,7 +428,49 @@ export default function Team() {
         const index = res.tapIndex
         if (index < myTeams.length) {
             // Switch to existing team
-            setCurrentTeam(myTeams[index])
+            const targetTeam = myTeams[index]
+            if (targetTeam.teamId === currentTeam?.teamId) return // Skip if same team
+            
+            // Switch team logic
+            setViewState('loading') // Show loading
+            setCurrentTeam(targetTeam)
+            Taro.setStorageSync('last_team_id', targetTeam.teamId)
+            
+            // Trigger refresh logic manually for the new team
+            // Reset state
+            setWeeklyStats([])
+            setMembers([])
+            setBestDayInfo({ dayName: '加载中...', count: 0, desc: '正在获取数据' })
+            setTopWorker(null)
+            
+            // Fetch details
+            // We can reuse refreshTeams(false) but we need to ensure it picks up the new last_team_id
+            // Or better, just call fetchTeamDetail directly + getDailyAttendance
+            
+            // Let's use handleReload style logic but specific for switch
+            isLoaded.current = false
+            lastLoadedTeamId.current = null // Force reload
+            
+            // Fetch everything
+            fetchTeamDetail(targetTeam.teamId).then(() => {
+                // Fetch Today's Attendance
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const todayStr = `${year}-${month}-${day}`;
+                
+                return getDailyAttendance(targetTeam.teamId, todayStr)
+            }).then(res => {
+                if (res) updateMembersList(res.members)
+                setViewState('active')
+                isLoaded.current = true
+            }).catch(err => {
+                console.error('Switch team failed', err)
+                Taro.showToast({ title: '切换失败', icon: 'none' })
+                setViewState('active') // Revert to active (might show empty/error state ideally)
+            })
+
         } else {
             // "Join New Team" clicked
             // Ensure state update happens after ActionSheet closes to avoid conflict
@@ -725,7 +767,32 @@ export default function Team() {
                             <Text className='icon'>👑</Text>
                             <Text>本周上班王</Text>
                         </View>
-                        {topWorker ? (
+                        {topWorker && Array.isArray(topWorker) && topWorker.length > 0 ? (
+                            <Swiper
+                                className='winner-swiper'
+                                vertical
+                                autoplay
+                                interval={2000}
+                                duration={500}
+                                circular
+                            >
+                                {topWorker.map((worker, index) => (
+                                    <SwiperItem key={index}>
+                                        <View className='winner-slide'>
+                                            <View className='winner-info'>
+                                                <Image 
+                                                    className='winner-avatar' 
+                                                    src={worker.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + worker.name} 
+                                                />
+                                                <Text className='main-date'>{worker.name}</Text>
+                                            </View>
+                                            <Text className='desc'>本周标记到办公室 {worker.count} 天，是团队的定海神针！</Text>
+                                        </View>
+                                    </SwiperItem>
+                                ))}
+                            </Swiper>
+                        ) : topWorker && !Array.isArray(topWorker) ? (
+                             // Fallback for single object (legacy)
                             <>
                                 <View className='winner-info'>
                                     <Image 

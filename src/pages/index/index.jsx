@@ -250,8 +250,12 @@ export default function Index() {
                 </View>
                 <View className='divider-dashed' />
                 <View className='list-item result'>
-                    <Text className='label'>理论工作日</Text>
-                    <Text className='value'>{stats.totalWorkDays} 天</Text>
+                    <Text className='label'>有效工作日</Text>
+                    <Text className='value'>{stats.effectiveWorkDays} 天</Text>
+                </View>
+                <View className='list-item result'>
+                    <Text className='label'>应到Office (×{stats.breakdown.targetRatio * 100}%)</Text>
+                    <Text className='value'>{stats.targetDays} 天</Text>
                 </View>
             </View>
             )}

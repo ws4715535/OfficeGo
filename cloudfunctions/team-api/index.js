@@ -428,7 +428,7 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
     })
     .end();
 
-  // 2. 获取 Top Worker
+  // 2. 获取 Top Worker (修改为支持多人并列)
   const topWorkerRes = await db.collection('attendance_records')
     .aggregate()
     .match({
@@ -441,7 +441,7 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
       count: $.sum(1)
     })
     .sort({ count: -1 })
-    .limit(1)
+    //.limit(1) // 移除 limit 1，获取所有人以计算并列
     .end();
 
   // 3. 组装趋势图
@@ -474,15 +474,19 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
   // 5. 组装 Top Worker
   let topWorker = null;
   if (topWorkerRes.list && topWorkerRes.list.length > 0) {
-    const winnerId = topWorkerRes.list[0]._id;
-    const winnerInfo = members.find(m => m.userId === winnerId); // Use mapped members
-    if (winnerInfo) {
-      topWorker = {
-        name: winnerInfo.nickName || '神秘人',
-        avatar: winnerInfo.avatarUrl || '',
-        count: topWorkerRes.list[0].count
-      };
-    }
+      const maxWorkCount = topWorkerRes.list[0].count;
+      
+      // 筛选所有达到最大次数的人（处理并列第一）
+      const winners = topWorkerRes.list.filter(item => item.count === maxWorkCount);
+      
+      topWorker = winners.map(winner => {
+          const winnerInfo = members.find(m => m.userId === winner._id);
+          return {
+              name: (winnerInfo && winnerInfo.nickName) ? winnerInfo.nickName : '神秘人',
+              avatar: (winnerInfo && winnerInfo.avatarUrl) ? winnerInfo.avatarUrl : '',
+              count: winner.count
+          };
+      });
   }
 
   return {
@@ -491,7 +495,7 @@ async function getTeamStats(myUserId, { teamId, dimension = 'week', refDate }) {
       dimension,
       trend,
       bestDay,
-      topWorker,
+      topWorker, // 现在这是一个数组 (Array)
       totalMembers
     }
   };
