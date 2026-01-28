@@ -18,12 +18,6 @@ export default function Team() {
   const [currentTeam, setCurrentTeam] = useState(null)
   const [myTeams, setMyTeams] = useState([])
   
-  // Date Logic
-  const getDayIndex = (date) => {
-    const day = date.getDay()
-    return day // 0 (Sun) - 6 (Sat)
-  }
-
   const getStartOfWeek = (date) => {
     const d = new Date(date)
     const day = d.getDay() // 0 is Sunday
@@ -33,6 +27,11 @@ export default function Team() {
     return d
   }
   
+  const getDayIndex = (date) => {
+    const day = date.getDay()
+    return day // 0 (Sun) - 6 (Sat)
+  }
+
   const [selectedDay, setSelectedDay] = useState(getDayIndex(new Date()))
   const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date()))
   const [members, setMembers] = useState([])
@@ -55,8 +54,114 @@ export default function Team() {
   // 1. Initial Load (FSM Trigger)
   // Use a flag to ensure initial load happens only once per session
   const isLoaded = useRef(false)
+  const modifiedDatesRef = useRef(new Set()) // Track modified dates from other pages
+
+  // Listen for attendance updates from Calendar page
+  useEffect(() => {
+    const onAttendanceUpdate = (data) => {
+        if (data && data.date) {
+            console.log('Received attendance update:', data.date)
+            modifiedDatesRef.current.add(data.date)
+        }
+    }
+    Taro.eventCenter.on('ATTENDANCE_UPDATED', onAttendanceUpdate)
+    return () => {
+        Taro.eventCenter.off('ATTENDANCE_UPDATED', onAttendanceUpdate)
+    }
+  }, [])
 
   useDidShow(async () => {
+    // Force refresh check on every show
+    console.log('useDidShow triggered. Loaded:', isLoaded.current, 'Modified:', modifiedDatesRef.current, 'Team:', currentTeam?.teamId)
+
+    // Check if we need to refresh based on modified dates
+    if (isLoaded.current && modifiedDatesRef.current.size > 0 && currentTeam) {
+        console.log('Checking modified dates:', modifiedDatesRef.current)
+        
+        // Calculate current week range
+        const start = new Date(currentWeekStart)
+        const end = new Date(start)
+        end.setDate(end.getDate() + 6)
+        
+        // Check if any modified date is within current week range
+        let shouldRefreshTrend = false
+        let shouldRefreshMembers = false
+        
+        // Calculate current selected date string
+        const selectedDateObj = new Date(currentWeekStart)
+        selectedDateObj.setDate(selectedDateObj.getDate() + selectedDay)
+        
+        // Use local date string construction to match event date format
+        const sy = selectedDateObj.getFullYear();
+        const sm = String(selectedDateObj.getMonth() + 1).padStart(2, '0');
+        const sd = String(selectedDateObj.getDate()).padStart(2, '0');
+        const selectedDateStr = `${sy}-${sm}-${sd}`;
+        
+        console.log('Current selected date:', selectedDateStr)
+
+        for (const dateStr of modifiedDatesRef.current) {
+            // Check trend refresh (if in week range)
+            const d = new Date(dateStr)
+            // Reset time part for comparison
+            d.setHours(0,0,0,0)
+            
+            if (d >= start && d <= end) {
+                shouldRefreshTrend = true
+            }
+            
+            // Check members refresh (if matches selected day)
+            // Note: dateStr from event is usually YYYY-MM-DD
+            console.log('Date matches selected date:', dateStr, selectedDateStr)
+            if (dateStr === selectedDateStr) {
+                shouldRefreshMembers = true
+            }
+        }
+        
+        // Clear modified dates
+        modifiedDatesRef.current.clear()
+        
+        if (shouldRefreshTrend) {
+            console.log('Refreshing trend stats due to data change')
+            // Refresh stats only
+            const y = start.getFullYear();
+            const m = String(start.getMonth() + 1).padStart(2, '0');
+            const d = String(start.getDate()).padStart(2, '0');
+            const weekRefDateStr = `${y}-${m}-${d}`;
+            
+            // Call API directly without setting loading state
+            getTeamStats(currentTeam.teamId, 'week', weekRefDateStr).then(statsRes => {
+                const { trend, bestDay, topWorker } = statsRes
+                setWeeklyStats(trend)
+                if (bestDay && bestDay.count > 0) {
+                    setBestDayInfo({
+                        dayName: bestDay.dayName,
+                        count: bestDay.count,
+                        desc: `本周${bestDay.dayName}最热闹，有${bestDay.count}位小伙伴在办公室, 线下活动约起来！`
+                    })
+                } else {
+                    setBestDayInfo({ dayName: '暂无数据', count: 0, desc: '大家似乎都很喜欢远程办公呢' })
+                }
+                setTopWorker(topWorker)
+            }).catch(err => console.error('Silent stats refresh failed', err))
+        }
+        
+        if (shouldRefreshMembers) {
+            console.log('Refreshing members list due to data change')
+            // Silent refresh - do NOT set membersLoading
+            // Use selectedDateStr which is calculated from currentWeekStart + selectedDay
+            // But if we are refreshing the list, we should probably use the date that was modified if it matches selected
+            // The logic above sets shouldRefreshMembers = true if ANY modified date matches selectedDateStr
+            // So we just fetch for selectedDateStr
+            getDailyAttendance(currentTeam.teamId, selectedDateStr).then(res => {
+                 updateMembersList(res.members)
+            }).catch(e => {
+                console.error('Silent member refresh failed', e)
+            })
+        }
+        
+        return // Skip normal init flow
+    }
+
     if (isLoaded.current) {
         // If already loaded, just try silent refresh if needed
         // But for now, let's skip it to save requests as per requirement
@@ -474,18 +579,42 @@ export default function Team() {
     return `${formatDate(monday)}-${formatDate(sunday)}`
   }
 
-  const changeWeek = (days) => {
+  const changeWeek = async (days) => {
       const newStart = new Date(currentWeekStart)
       newStart.setDate(newStart.getDate() + days)
       newStart.setHours(0, 0, 0, 0) // Normalize time
       setCurrentWeekStart(newStart)
 
-      // Determine target date (same day of week in new week)
+      // 切换周时，默认选中周一 (Index 1)
+      // 如果需要选中今天(若今天在当前周)，逻辑会复杂点，这里简单处理为默认周一
+      const newSelectedDay = 1 
+      setSelectedDay(newSelectedDay)
+
+      // Calculate target date (New Start + selectedDay)
+      // currentWeekStart is Sunday (Index 0), so +1 is Monday
       const targetDate = new Date(newStart)
-      targetDate.setDate(newStart.getDate() + selectedDay)
+      targetDate.setDate(newStart.getDate() + newSelectedDay) 
       const dateStr = targetDate.toISOString().split('T')[0]
       
-      fetchTeamDetail(currentTeam.teamId, dateStr)
+      // Fetch trend stats for the new week (using Monday as refDate usually works or start of week)
+      // Pass refDate as the start of the week or any day within that week
+      // Use local date string construction to avoid UTC issues
+      const y = newStart.getFullYear();
+      const m = String(newStart.getMonth() + 1).padStart(2, '0');
+      const d = String(newStart.getDate()).padStart(2, '0');
+      const weekRefDateStr = `${y}-${m}-${d}`;
+      fetchTeamDetail(currentTeam.teamId, weekRefDateStr)
+
+      // Fetch daily attendance for the selected day (Monday)
+      setMembersLoading(true)
+      try {
+        const res = await getDailyAttendance(currentTeam.teamId, dateStr)
+        updateMembersList(res.members)
+      } catch (err) {
+        console.error('Fetch daily status failed', err)
+      } finally {
+        setMembersLoading(false)
+      }
   }
 
   const handleRefresh = async () => {
@@ -532,6 +661,15 @@ export default function Team() {
 
   const renderActive = () => {
       const weekLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] // Changed to Sun-Sat
+      
+      // Calculate display date text
+      const selectedDateObj = new Date(currentWeekStart)
+      selectedDateObj.setDate(selectedDateObj.getDate() + selectedDay)
+      const dateText = `${selectedDateObj.getMonth() + 1}月${selectedDateObj.getDate()}日`
+      const isToday = selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime()
+      const dayLabel = isToday ? '今天' : weekLabels[selectedDay]
+      const fullDateText = `${dateText} ${dayLabel}`
+
       return (
         <PullToRefresh
           style={{
@@ -596,7 +734,7 @@ export default function Team() {
                                     />
                                     <Text className='main-date'>{topWorker.name}</Text>
                                 </View>
-                                <Text className='desc'>本周累计到办公室 {topWorker.count} 天，是团队的定海神针！</Text>
+                                <Text className='desc'>本周标记到办公室 {topWorker.count} 天，是团队的定海神针！</Text>
                             </>
                         ) : (
                             <>
@@ -657,7 +795,7 @@ export default function Team() {
           <View className='section-container'>
             <View className='list-header'>
               <Text className='section-title'>
-                谁在 Office ({selectedDay === todayIndex && currentWeekStart.getTime() === getStartOfWeek(new Date()).getTime() ? '今天' : weekLabels[selectedDay]})
+                谁在 Office ({fullDateText})
                 <Text className='member-count'>（{members.filter(m => m.status === 'OFFICE').length}人）</Text>
               </Text>
             </View>

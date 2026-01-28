@@ -65,6 +65,9 @@ export const useCalendar = () => {
     
     // 2. Queue for Cloud Sync
     pendingChanges.current[dateStr] = status;
+
+    // Trigger global event for cross-page communication
+    Taro.eventCenter.trigger('ATTENDANCE_UPDATED', { date: dateStr, status });
     
     // 3. Debounce Cloud Call (0.5 seconds)
     if (debounceTimer.current) {
