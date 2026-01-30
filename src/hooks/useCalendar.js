@@ -60,6 +60,7 @@ export const useCalendar = () => {
 
   // Unified update handler with debounce
   const updateDateStatus = useCallback((dateStr, status) => {
+    const prevStatus = getRecord(dateStr)
     // 1. Update Local Storage (Sync)
     saveRecord(dateStr, status);
     
@@ -67,7 +68,8 @@ export const useCalendar = () => {
     pendingChanges.current[dateStr] = status;
 
     // Trigger global event for cross-page communication
-    Taro.eventCenter.trigger('ATTENDANCE_UPDATED', { date: dateStr, status });
+    // Provide both prev/next to allow other pages to update locally without extra network requests.
+    Taro.eventCenter.trigger('ATTENDANCE_UPDATED', { date: dateStr, prevStatus, nextStatus: status, status });
     
     // 3. Debounce Cloud Call (0.5 seconds)
     if (debounceTimer.current) {
