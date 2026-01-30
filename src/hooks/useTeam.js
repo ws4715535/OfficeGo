@@ -360,10 +360,10 @@ export const useTeam = () => {
         viewState: 'active',
       }))
 
-      // 更新缓存
+      // 更新缓存 (使用 baseRes 中的 members，这才是完整的成员列表)
       const userId = Taro.getStorageSync('userId')
       if (userId && baseRes.baseInfo) {
-        updateCache(userId, teamId, baseRes.baseInfo, attendanceRes?.members || [])
+        updateCache(userId, teamId, baseRes.baseInfo, baseRes.members || [])
       }
     }
 
@@ -643,6 +643,13 @@ export const useTeam = () => {
       
       // 检查页面状态
       if (!currentState.currentTeam || currentState.viewState !== 'active') {
+        return
+      }
+
+      // 如果页面不可见，标记为待刷新，暂不更新 State
+      if (!isVisible.current) {
+        console.log('[useTeam] Page hidden, deferring update')
+        pendingRefresh.current = true
         return
       }
       

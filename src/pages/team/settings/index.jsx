@@ -65,7 +65,15 @@ export default function TeamSettings() {
       const { baseInfo, members } = data
       
       // 找到当前用户的角色
-      const myInfo = members.find(m => m.isMe)
+      // 1. 优先尝试从成员列表中找 isMe 标记
+      let myInfo = members.find(m => m.isMe)
+      
+      // 2. 如果没找到（可能缓存数据结构旧），尝试用 userId 匹配
+      if (!myInfo) {
+        const userId = Taro.getStorageSync('userId')
+        myInfo = members.find(m => m.userId === userId)
+      }
+
       const myRole = myInfo ? (myInfo.role || 'member') : 'member'
       
       // 格式化成员列表

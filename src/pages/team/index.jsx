@@ -47,8 +47,11 @@ export default function Team() {
 
   // 切换团队
   const handleSwitchTeam = () => {
-    const teamNames = state.myTeams.map(t => t.name)
-    const options = [...teamNames, '加入其他团队']
+    // 标记管理员团队
+    const options = [
+      ...state.myTeams.map(t => `${t.name}${t.role === 'admin' ? ' (管理员)' : ''}`),
+      '加入/创建团队'
+    ]
     
     Taro.showActionSheet({
       itemList: options,
@@ -59,9 +62,27 @@ export default function Team() {
           if (targetTeam.teamId === state.currentTeam?.teamId) return
           switchTeam(targetTeam.teamId)
         } else {
-          setTimeout(() => {
-            setShowJoinModal(true)
-          }, 350)
+          // 弹出二级菜单
+          Taro.showActionSheet({
+            itemList: ['加入团队', '创建团队'],
+            success: (subRes) => {
+              if (subRes.tapIndex === 0) {
+                // 加入团队
+                setTimeout(() => {
+                  setShowJoinModal(true)
+                }, 100)
+              } else if (subRes.tapIndex === 1) {
+                // 创建团队
+                setTimeout(() => {
+                  setShowCreateModal(true)
+                }, 100)
+              }
+            },
+            fail: (subRes) => {
+              if (subRes.errMsg && subRes.errMsg.includes('cancel')) return
+              console.error(subRes.errMsg)
+            }
+          })
         }
       },
       fail: (res) => {
@@ -128,13 +149,17 @@ export default function Team() {
     Taro.showLoading({ title: '创建中...' })
     try {
       const userInfo = Taro.getStorageSync('userInfo')
-      await createTeam(newTeamName, userInfo)
+      const res = await createTeam(newTeamName, userInfo) // 获取返回结果，包含 teamId
       Taro.hideLoading()
       Taro.showToast({ title: '创建成功', icon: 'success' })
       setShowCreateModal(false)
       setNewTeamName('')
-      // 刷新团队列表
+      
+      // 刷新团队列表并切换到新创建的团队
       await refresh('full')
+      if (res && res.teamId) {
+        switchTeam(res.teamId)
+      }
     } catch (err) {
       Taro.hideLoading()
       Taro.showToast({ title: err.message || '创建失败', icon: 'none' })
@@ -248,28 +273,14 @@ export default function Team() {
             interval={5000}
             duration={500}
           >
-            {/* Slide 1: Best Day */}
-            <SwiperItem>
-              <View className='best-day-card'>
-                <View className='card-content'>
-                  <View className='tag'>
-                    <Text className='icon'>🏆</Text>
-                    <Text>团队黄金日推荐</Text>
-                  </View>
-                  <Text className='main-date'>{state.bestDayInfo.dayName}</Text>
-                  <Text className='desc'>{state.bestDayInfo.desc}</Text>
-                </View>
-                <View className='bg-decoration'>🍚</View>
-              </View>
-            </SwiperItem>
 
-            {/* Slide 2: Top Worker */}
+            {/* Slide 1: Top Worker */}
             <SwiperItem>
               <View className='best-day-card top-worker-card'>
                 <View className='card-content'>
                   <View className='tag'>
                     <Text className='icon'>👑</Text>
-                    <Text>本周上班王</Text>
+                    <Text>本周上班王{state.topWorker && Array.isArray(state.topWorker) && state.topWorker.length > 0 ? ` (${state.topWorker.length}人)` : ''}</Text>
                   </View>
                   {state.topWorker && Array.isArray(state.topWorker) && state.topWorker.length > 0 ? (
                     <Swiper
@@ -316,7 +327,23 @@ export default function Team() {
                 <View className='bg-decoration'>👑</View>
               </View>
             </SwiperItem>
+                        {/* Slide 2: Best Day */}
+            <SwiperItem>
+              <View className='best-day-card'>
+                <View className='card-content'>
+                  <View className='tag'>
+                    <Text className='icon'>🏆</Text>
+                    <Text>团队黄金日推荐</Text>
+                  </View>
+                  <Text className='main-date'>{state.bestDayInfo.dayName}</Text>
+                  <Text className='desc'>{state.bestDayInfo.desc}</Text>
+                </View>
+                <View className='bg-decoration'>🍚</View>
+              </View>
+            </SwiperItem>
           </Swiper>
+
+          
 
           {/* 3. Week Distribution */}
           <View className='section-container'>
