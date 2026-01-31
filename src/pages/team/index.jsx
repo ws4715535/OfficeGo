@@ -198,7 +198,7 @@ export default function Team() {
         <Skeleton width="40%" height={pxTransform(32)} animated style={{ marginBottom: pxTransform(40) }} />
         
         <View style={{ display: 'flex', gap: pxTransform(10), marginBottom: pxTransform(40) }}>
-          {[1,2,3,4,5].map(i => <Skeleton key={i} width={pxTransform(40)} height={pxTransform(120)} animated />)}
+          {[1].map(i => <Skeleton key={i} width='100%' height={pxTransform(120)} animated />)}
         </View>
 
         <View style={{ display: 'flex', flexDirection: 'column', gap: pxTransform(20) }}>

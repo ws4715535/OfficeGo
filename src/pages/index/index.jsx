@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import Taro, { useDidShow, useReady } from '@tarojs/taro'
+import Taro, { useDidShow, useReady, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
 import { Popup } from '@nutui/nutui-react-taro'
@@ -75,6 +75,12 @@ export default function Index() {
     Taro.switchTab({ url: '/pages/team/index' })
   }
 
+  useShareAppMessage((res) => {
+    return {
+      title: '来了么 - 轻松规划你的 Office Days',
+      path: '/pages/index/index',
+    }
+  })
   return (
     <View className='dashboard'>
       {/* 1. Navbar */}
@@ -157,15 +163,14 @@ export default function Index() {
             <View className='icon-box blue'>           
            <Image src={timeIcon} style={{ width: '48rpx', height: '48rpx' }} />
             </View>
-            <View className='row-label-wrapper'>
+            <View className='row-label-wrapper' onClick={(e) => {
+                   e.stopPropagation()
+                   setShowInfoModal(true)
+                 }} >
               <Text className='text'>本月有效工作日</Text>
               <Image 
                 src={infoIcon} 
                 className='info-icon' 
-                onClick={(e) => {
-                   e.stopPropagation()
-                   setShowInfoModal(true)
-                 }} 
               />
             </View>
             <View className='row-value'>

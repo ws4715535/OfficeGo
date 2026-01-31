@@ -4,8 +4,8 @@ $color-white-fixed: #FFFFFF; // Fallback definition
 
 .team-page {
   min-height: 100vh;
-  padding: $spacing-lg;
-  background-color: transparent; // Uses page background
+  padding: 0 $spacing-lg $spacing-lg $spacing-lg;
+  background-color: #fff; // Uses page background
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;

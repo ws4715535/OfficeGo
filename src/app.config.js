@@ -23,6 +23,7 @@ export default defineAppConfig({
         text: '首页',
         iconPath: 'assets/tabbar/home.png',
         selectedIconPath: 'assets/tabbar/home-active.png',
+        enableShareAppMessage: true
       },
       {
         pagePath: 'pages/team/index',

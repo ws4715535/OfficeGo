@@ -228,6 +228,10 @@ export const useTeam = () => {
   
   // 保存最新的 state，避免闭包陷阱
   const stateRef = useRef(state)
+  // 页面是否在前台（Team 页 useDidShow/useDidHide 会同步）
+  const isVisible = useRef(true)
+  // 页面从后台切回时是否待刷新
+  const pendingRefresh = useRef(false)
 
   /**
    * 请求去重包装器

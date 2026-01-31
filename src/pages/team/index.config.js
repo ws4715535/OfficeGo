@@ -1,5 +1,5 @@
 export default definePageConfig({
-  navigationBarTitleText: '记录',
+  navigationBarTitleText: '团队',
   enableShareAppMessage: true,
   enableShareTimeline: true
 })
