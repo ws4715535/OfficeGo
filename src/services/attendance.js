@@ -93,6 +93,30 @@ const AttendanceService = {
       console.error('AttendanceService Delete Error:', error)
       throw error
     }
+  },
+
+  /**
+   * Get yearly records (for heatmap)
+   * @param {number} year - e.g. 2026
+   * @returns {Promise<{year: number, records: Array, stats: Object}>}
+   */
+  getYearlyRecords: async (year) => {
+    try {
+      const res = await Taro.cloud.callFunction({
+        name: 'attendance-api',
+        data: {
+          action: 'getYearlyRecords',
+          data: { year }
+        }
+      })
+      if (res.result.code === 0) {
+        return res.result.data
+      }
+      throw new Error(res.result.message)
+    } catch (error) {
+      console.error('AttendanceService GetYearly Error:', error)
+      throw error
+    }
   }
 }
 

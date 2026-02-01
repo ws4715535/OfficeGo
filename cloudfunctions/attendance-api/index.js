@@ -43,6 +43,9 @@ exports.main = async (event, context) => {
       case 'deleteRecord':
         result = await deleteRecord(openid, data || {})
         break;
+      case 'getYearlyRecords':
+        result = await getYearlyRecords(openid, data || {})
+        break;
       default:
         result = { code: 400, message: 'Unknown action' }
     }
@@ -175,4 +178,70 @@ async function deleteRecord(openid, input) {
   }).remove()
 
   return { code: 0, message: 'Deleted' }
+}
+
+/**
+ * 获取全年考勤记录（用于热力图）
+ */
+async function getYearlyRecords(openid, input) {
+  const year = input.year || new Date().getFullYear()
+  const start = `${year}-01-01`
+  const end = `${year}-12-31`
+
+  const collection = db.collection('attendance_records')
+  
+  // 云函数单次查询限制100条，需要分页获取
+  let allRecords = []
+  let lastId = null
+  const batchSize = 100
+
+  while (true) {
+    let query = collection.where({
+      _openid: openid,
+      date: _.gte(start).and(_.lte(end))
+    }).orderBy('date', 'asc').limit(batchSize)
+    
+    // 分页：跳过已获取的记录
+    if (lastId) {
+      query = collection.where({
+        _openid: openid,
+        date: _.gte(start).and(_.lte(end)),
+        _id: _.gt(lastId)
+      }).orderBy('_id', 'asc').limit(batchSize)
+    }
+
+    const res = await query.get()
+    
+    if (res.data.length === 0) break
+    
+    allRecords = allRecords.concat(res.data)
+    lastId = res.data[res.data.length - 1]._id
+    
+    // 如果返回的数据少于 batchSize，说明已经没有更多数据了
+    if (res.data.length < batchSize) break
+  }
+
+  // 统计
+  const stats = {
+    office: 0,
+    remote: 0,
+    leave: 0,
+    trip: 0,
+    total: allRecords.length
+  }
+
+  allRecords.forEach(r => {
+    if (stats[r.status] !== undefined) {
+      stats[r.status]++
+    }
+  })
+
+  return { 
+    code: 0, 
+    data: {
+      year,
+      records: allRecords.map(r => ({ date: r.date, status: r.status })),
+      stats
+    } 
+  }
 }

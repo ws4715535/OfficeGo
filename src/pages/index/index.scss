@@ -237,22 +237,41 @@
 }
 
 .hero-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: $spacing-md;
+  display: flex;
+  flex-direction: row;
+  gap: $spacing-sm;
 
   .stat-col {
+    flex: 1;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 8rpx;
+    padding: 20rpx 0;
+
+    &.with-bg {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      border-radius: 16rpx;
+    }
+
+    &.warning-bg {
+      background: rgba(252, 211, 77, 0.15);
+    }
 
     .label {
       font-size: $font-xs;
       opacity: 0.7;
+
+      &.warning {
+        color: #FCD34D;
+        opacity: 1;
+      }
     }
 
     .value {
-      font-size: 40rpx; // 20px
+      font-size: 36rpx;
       font-weight: $font-weight-bold;
       font-family: 'DIN', sans-serif;
       
@@ -266,6 +285,58 @@
         color: #FCD34D; // Amber-300
       }
     }
+  }
+}
+
+/* 热力图展开/折叠动画 */
+.heatmap-wrapper {
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease,
+              margin 0.35s ease;
+
+  &.expanded {
+    max-height: 600rpx;
+    opacity: 1;
+    margin-bottom: 0;
+  }
+
+  &.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: -16rpx;
+  }
+}
+
+/* 热力图折叠按钮 */
+.heatmap-toggle {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.toggle-btn {
+  width: 80rpx;
+  height: 36rpx;
+  background: #F3F4F6;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+
+  &:active {
+    background: #E5E7EB;
+  }
+}
+
+.toggle-icon {
+  width: 24rpx;
+  height: 24rpx;
+  transition: transform 0.3s ease;
+
+  &.rotated {
+    transform: rotate(180deg);
   }
 }
 

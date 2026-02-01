@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow, useReady, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
@@ -10,14 +10,51 @@ import takeoffIcon from '../../assets/takeoff.png'
 import targetIcon from '../../assets/target.png'
 import rightArrowIcon from '../../assets/right_arrow.png'
 import infoIcon from '../../assets/info.png'
+import downIcon from '../../assets/down.png'
 import { useDashboard } from '../../hooks/useDashboard'
 import AuthService from '../../services/auth'
+import AttendanceService from '../../services/attendance'
+import AttendanceHeatmap from '../../components/AttendanceHeatmap'
 import './index.scss'
 
 export default function Index() {
   const { year, month, stats } = useDashboard()
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showHeatmap, setShowHeatmap] = useState(false)
+  const [heatmapData, setHeatmapData] = useState([])
+  const [heatmapLoading, setHeatmapLoading] = useState(false)
+  
+  // 标记是否已加载过热力图数据（避免重复请求）
+  const heatmapLoadedRef = useRef(false)
+
+  // 加载全年考勤数据（热力图）
+  const loadYearlyRecords = useCallback(async (targetYear, forceRefresh = false) => {
+    // 如果已经加载过且非强制刷新，跳过
+    if (heatmapLoadedRef.current && !forceRefresh) return
+    
+    try {
+      setHeatmapLoading(true)
+      const result = await AttendanceService.getYearlyRecords(targetYear)
+      if (result && result.records) {
+        setHeatmapData(result.records.map(r => ({
+          date: r.date,
+          status: r.status?.toLowerCase() || null
+        })))
+        heatmapLoadedRef.current = true // 标记已加载
+      }
+    } catch (err) {
+      console.error('Failed to load yearly records:', err)
+    } finally {
+      setHeatmapLoading(false)
+    }
+  }, [])
+
+  // 刷新热力图数据
+  const handleHeatmapRefresh = useCallback(() => {
+    const currentYear = new Date().getFullYear()
+    loadYearlyRecords(currentYear, true)
+  }, [loadYearlyRecords])
 
   useReady(async () => {
     // 0. Check Login Status first
@@ -61,6 +98,10 @@ export default function Index() {
             avatarUrl: localUser.avatarUrl || ''
         })
     }
+
+    // 4. Load Yearly Records for Heatmap
+    const currentYear = new Date().getFullYear()
+    loadYearlyRecords(currentYear)
   })
 
   const navigateToCalendar = () => {
@@ -119,7 +160,7 @@ export default function Index() {
         <View className='hero-header'>
           <View className='date-block'>
             <Text className='sub-date'>{year}年 {month}月</Text>
-            <Text className='main-title'>到岗进度</Text>
+            <Text className='main-title'>OfficeDays到岗进度</Text>
           </View>
           <View className='percent-badge'>
             <Text>{stats.progress}%</Text>
@@ -136,18 +177,43 @@ export default function Index() {
         </View>
 
         <View className='hero-stats'>
-          <View className='stat-col'>
+          <View className='stat-col with-bg'>
             <Text className='label'>本月应到</Text>
             <Text className='value'>{stats.targetDays} <Text className='unit'>天</Text></Text>
           </View>
-          <View className='stat-col'>
+          <View className='stat-col with-bg'>
             <Text className='label'>已完成</Text>
             <Text className='value'>{stats.officeDays} <Text className='unit'>天</Text></Text>
           </View>
-          <View className='stat-col'>
-            <Text className='label'>还需去</Text>
+          <View className='stat-col with-bg'>
+            <Text className='label warning'>还需去</Text>
             <Text className='value warning'>{stats.remainingDays} <Text className='unit'>天</Text></Text>
           </View>
+        </View>
+      </View>
+
+      {/* 热力图区域 */}
+      <View className={`heatmap-wrapper ${showHeatmap ? 'expanded' : 'collapsed'}`}>
+        <AttendanceHeatmap 
+          year={year} 
+          data={heatmapData}
+          cellSize={20}
+          gap={6}
+          loading={heatmapLoading}
+          onCellClick={(day) => {
+            console.log('[Home] Heatmap cell clicked:', day.date, day.status, day.isFuture ? '(future)' : '')
+          }}
+          onRefresh={handleHeatmapRefresh}
+        />
+      </View>
+
+      {/* 折叠/展开按钮 */}
+      <View className='heatmap-toggle' onClick={() => setShowHeatmap(!showHeatmap)}>
+        <View className='toggle-btn'>
+          <Image 
+            src={downIcon} 
+            className={`toggle-icon ${showHeatmap ? 'rotated' : ''}`}
+          />
         </View>
       </View>
 
