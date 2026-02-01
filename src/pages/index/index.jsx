@@ -3,7 +3,6 @@ import Taro, { useDidShow, useReady, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
 import { Popup } from '@nutui/nutui-react-taro'
-import settingIcon from '../../assets/setting.png'
 import statisticIcon from '../../assets/statistic.png'
 import timeIcon from '../../assets/time.png'
 import takeoffIcon from '../../assets/takeoff.png'
@@ -17,6 +16,35 @@ import AttendanceService from '../../services/attendance'
 import AttendanceHeatmap from '../../components/AttendanceHeatmap'
 import './index.scss'
 
+// 动态问候语
+const getGreeting = () => {
+  const hour = new Date().getHours()
+  const greetings = [
+    '又是充满活力的一天 ✨',
+    '今天也要加油哦 💪',
+    '美好的一天从打卡开始 🌟',
+    '愿你今天心情愉快 😊',
+    '新的一天，新的开始 🎯',
+  ]
+  
+  // 根据时间段选择不同问候
+  if (hour < 6) {
+    return '夜深了，注意休息 🌙'
+  } else if (hour < 9) {
+    return '早安，新的一天开始啦 ☀️'
+  } else if (hour < 12) {
+    return '上午好，工作顺利 💼'
+  } else if (hour < 14) {
+    return '午安，记得吃午饭 🍱'
+  } else if (hour < 18) {
+    return '下午好，继续加油 ☕'
+  } else if (hour < 21) {
+    return '晚上好，辛苦啦 🌆'
+  } else {
+    return '夜深了，早点休息 🌙'
+  }
+}
+
 export default function Index() {
   const { year, month, stats } = useDashboard()
   const [userInfo, setUserInfo] = useState({ nickName: '来了么到岗助手!', avatarUrl: '' })
@@ -24,6 +52,7 @@ export default function Index() {
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [heatmapData, setHeatmapData] = useState([])
   const [heatmapLoading, setHeatmapLoading] = useState(false)
+  const [greeting, setGreeting] = useState(getGreeting())
   
   // 标记是否已加载过热力图数据（避免重复请求）
   const heatmapLoadedRef = useRef(false)
@@ -124,14 +153,21 @@ export default function Index() {
   })
   return (
     <View className='dashboard'>
-      {/* 1. Navbar */}
-      <View className='navbar'>
-        <View className='brand'>
-          {userInfo.avatarUrl && <Image src={userInfo.avatarUrl} className='user-avatar-small' mode='aspectFill' />}
-          <Text className='app-name'>Hi, {userInfo.nickName}</Text>
+      {/* 1. User Profile Header */}
+      <View className='user-header' onClick={navigateToSettings}>
+        <View className='avatar-wrapper'>
+          {userInfo.avatarUrl ? (
+            <Image src={userInfo.avatarUrl} className='user-avatar' mode='aspectFill' />
+          ) : (
+            <View className='user-avatar placeholder'>
+              <Text className='placeholder-text'>{userInfo.nickName?.charAt(0) || '?'}</Text>
+            </View>
+          )}
+          <View className='online-dot' />
         </View>
-        <View className='settings-icon' onClick={navigateToSettings}>
-          <Image src={settingIcon} style={{ width: '32rpx', height: '32rpx' }} />
+        <View className='user-info'>
+          <Text className='user-name'>Hi, {userInfo.nickName}</Text>
+          <Text className='user-greeting'>{greeting}</Text>
         </View>
       </View>
 

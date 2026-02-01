@@ -177,7 +177,7 @@
 .heatmap-grid-wrapper {
   position: relative;
   width: max-content;
-  padding-right: 20rpx;
+  padding-right: 48rpx; // 增加右边距，防止12月换行
 }
 
 .month-labels {
@@ -193,6 +193,7 @@
 .month-label-text {
   font-size: 20rpx;
   color: $color-text-placeholder;
+  white-space: nowrap;
 }
 
 .heatmap-grid {

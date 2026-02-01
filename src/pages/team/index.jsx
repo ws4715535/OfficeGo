@@ -10,6 +10,7 @@ import settingIcon from '../../assets/setting.png'
 import grassIcon from '../../assets/grass.png'
 import leftIcon from '../../assets/left.png'
 import rightIcon from '../../assets/right.png'
+import refreshIcon from '../../assets/refresh.png'
 import './index.scss'
 
 // 工具函数：获取日期在周中的索引
@@ -198,7 +199,7 @@ export default function Team() {
         <Skeleton width="40%" height={pxTransform(32)} animated style={{ marginBottom: pxTransform(40) }} />
         
         <View style={{ display: 'flex', gap: pxTransform(10), marginBottom: pxTransform(40) }}>
-          {[1].map(i => <Skeleton key={i} width='100%' height={pxTransform(120)} animated />)}
+          {[1,2,3,4,5].map(i => <Skeleton key={i} width={pxTransform(40)} height={pxTransform(120)} animated />)}
         </View>
 
         <View style={{ display: 'flex', flexDirection: 'column', gap: pxTransform(20) }}>
@@ -244,6 +245,18 @@ export default function Team() {
       <PullToRefresh
         style={{ backgroundColor: 'transparent' }}
         onRefresh={handleRefresh}
+        renderIcon={(status) => (
+          <Image 
+            src={refreshIcon} 
+            style={{ 
+              width: '24px', 
+              height: '24px',
+              transition: 'transform 0.3s ease',
+              transform: status === 'refreshing' ? 'rotate(360deg)' : 'rotate(0deg)',
+              animation: status === 'refreshing' ? 'spin 1s linear infinite' : 'none',
+            }} 
+          />
+        )}
       >
         <View className='team-page'>
           {/* 1. Header with Team Switcher */}
