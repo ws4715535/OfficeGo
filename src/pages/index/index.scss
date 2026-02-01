@@ -141,7 +141,7 @@
 
 /* 2. Team Banner */
 .team-banner-container {
-  margin: -$spacing-sm 0;
+  margin: -$spacing-xs 0;
 }
 
 .team-banner {
@@ -279,7 +279,49 @@
     height: 100%;
     background: $color-white;
     border-radius: $radius-full;
-    transition: width 0.5s ease-out;
+    position: relative;
+    animation: progressFill 1s ease-out forwards, progressPulse 2s ease-in-out 1s infinite;
+    transform-origin: left center;
+
+    // 发光效果
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 30rpx;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
+      border-radius: 0 $radius-full $radius-full 0;
+      animation: progressShine 2s ease-in-out 1s infinite;
+    }
+  }
+}
+
+@keyframes progressFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 12rpx 4rpx rgba(255, 255, 255, 0.6);
+  }
+}
+
+@keyframes progressShine {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
   }
 }
 

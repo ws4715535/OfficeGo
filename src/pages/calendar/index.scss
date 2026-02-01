@@ -14,13 +14,12 @@
 /* 1. Navbar */
 .custom-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  // padding: $spacing-xs 0;
-
+  width: 100%;
 
   .page-title {
-    font-size: 32rpx; // Smaller title
+    font-size: 32rpx;
     font-weight: bold;
     color: $color-text-main;
   }
@@ -28,28 +27,28 @@
   .month-switcher {
     display: flex;
     align-items: center;
-    background: rgba(#F3F4F6, 0.7); // Use rgba instead of opacify
+    background: rgba(#F3F4F6, 0.7);
     border-radius: 999px;
-    padding: 14rpx 20rpx; // Reduce padding
-    gap: $spacing-xs; // Reduce gap
+    padding: 14rpx 20rpx;
+    gap: $spacing-xs;
 
     .current-month {
-      font-size: 26rpx; // Smaller month text
+      font-size: 26rpx;
       font-weight: $font-weight-bold;
       color: $color-text-main;
-      min-width: 140rpx; // Reduce width
+      min-width: 140rpx;
       text-align: center;
     }
 
     .arrow-btn {
-      padding: 4rpx; // Reduce clickable area padding
+      padding: 4rpx;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0.6;
       
       .nav-icon {
-        width: 24rpx; // Smaller icon
+        width: 24rpx;
         height: 24rpx;
       }
 
@@ -95,26 +94,25 @@
 
 /* 4. Legend */
 .legend-container {
-  margin-top: $spacing-md;
   display: flex;
   flex-direction: column;
-  gap: $spacing-sm;
-  padding-left: $spacing-sm;
-  width: 100%; // Ensure full width
-  max-width: 600rpx; // Match calendar width
-  align-self: center; // Center itself in flex container but keep content left-aligned
-
+  gap: $spacing-xs;
+  width: 100%;
+  padding: 0 20rpx; // Match calendar internal padding
+  box-sizing: border-box;
 
   .legend-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: $spacing-sm;
 
     .dot {
-      width: 20rpx;
-      height: 20rpx;
+      width: 16rpx;
+      height: 16rpx;
       border-radius: 50%;
-      position: relative; // Needed for ::after
+      position: relative;
+      margin-top: 4rpx;
+      flex-shrink: 0;
 
       &::after {
         content: '';
@@ -151,6 +149,7 @@
       font-size: $font-xs;
       color: $color-text-sub;
       font-weight: $font-weight-medium;
+      line-height: 1.4;
     }
   }
 }

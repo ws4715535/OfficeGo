@@ -199,17 +199,16 @@ export default function Calendar() {
         </View>
         <View className='legend-row'>
           <View className='dot leave' />
-          <Text className='legend-text'>长按标记 "请假"， 本月已请假{monthSummary.leaveCount} 天</Text>
+          <Text className='legend-text'>长按标记 "请假"，本月已请假 {monthSummary.leaveCount} 天</Text>
         </View>
-        <View className='legend-row'>
-          <View className='dot leave' />
-          <Text className='legend-text'>本月公共假期: </Text>
-                   {monthSummary.holidayDetails && monthSummary.holidayDetails.length > 0 && (
-             monthSummary.holidayDetails.map((detail, idx) => (
-                    <Text className='legend-text'>{detail}</Text>
-             ))
-         )}
-        </View>
+        {monthSummary.holidayDetails && monthSummary.holidayDetails.length > 0 && (
+          <View className='legend-row'>
+            <View className='dot holiday' />
+            <Text className='legend-text'>
+              本月假期：{monthSummary.holidayDetails.join('；')}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   )

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import refreshIcon from '../../assets/refresh.png'
 import './index.scss'
@@ -16,6 +16,7 @@ import './index.scss'
  * @param {boolean} props.showMonthLabels - 是否显示月份标签，默认true
  * @param {boolean} props.showTitle - 是否显示标题，默认true
  * @param {boolean} props.showScrollIndicator - 是否显示滚动进度指示器，默认true
+ * @param {boolean} props.showDayNumber - 是否显示日期数字，默认false
  * @param {string} props.title - 自定义标题（会覆盖动态标题）
  * @param {Object} props.colors - 自定义颜色 {office: '#xxx', leave: '#xxx', empty: '#xxx'}
  * @param {Object} props.labels - 自定义标签 {office: '来', leave: '假', empty: '无'}
@@ -33,6 +34,7 @@ const AttendanceHeatmap = ({
   showMonthLabels = true,
   showTitle = true,
   showScrollIndicator = true,
+  showDayNumber = false,
   title,
   colors = {
     office: '#4F46E5',  // indigo-600
@@ -50,6 +52,20 @@ const AttendanceHeatmap = ({
 }) => {
   // 滚动进度
   const [scrollProgress, setScrollProgress] = useState(0)
+  // 点击显示数字的单元格
+  const [clickedCell, setClickedCell] = useState(null)
+  const [isFading, setIsFading] = useState(false)
+  const clickTimerRef = useRef(null)
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+      }
+    }
+  }, [])
+
   // 将数据转换为 Map 便于查找
   const dataMap = useMemo(() => {
     const map = new Map()
@@ -161,6 +177,26 @@ const AttendanceHeatmap = ({
   // 处理单元格点击
   const handleCellClick = (day) => {
     if (!day.isCurrentYear) return
+    
+    // 清除之前的定时器
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+    }
+    
+    // 显示数字
+    setClickedCell(day.date)
+    setIsFading(false)
+    
+    // 2.5秒后开始淡出，3秒后完全消失
+    clickTimerRef.current = setTimeout(() => {
+      setIsFading(true)
+      // 0.5秒淡出动画后清除
+      setTimeout(() => {
+        setClickedCell(null)
+        setIsFading(false)
+      }, 500)
+    }, 2500)
+    
     if (onCellClick) {
       onCellClick(day)
     }
@@ -294,6 +330,8 @@ const AttendanceHeatmap = ({
                     const hasStatus = day.status && (day.status === 'office' || day.status === 'OFFICE' || day.status === 'leave' || day.status === 'LEAVE')
                     const statusColor = getCellColor(day.status, day.isCurrentYear)
                     const borderRadius = `${Math.floor(cellSizePx / 5)}rpx`
+                    // 获取日期的天数
+                    const dayOfMonth = day.isCurrentYear ? parseInt(day.date.split('-')[2]) : ''
                     
                     return (
                       <View
@@ -317,6 +355,24 @@ const AttendanceHeatmap = ({
                               opacity: day.isFuture ? 0.4 : 1,
                             }}
                           />
+                        )}
+                        {/* 日期数字 - 常显模式 */}
+                        {showDayNumber && day.isCurrentYear && (
+                          <Text 
+                            className={`day-number ${hasStatus ? 'has-status' : ''}`}
+                            style={{ fontSize: `${Math.floor(cellSizePx * 0.8)}rpx` }}
+                          >
+                            {dayOfMonth}
+                          </Text>
+                        )}
+                        {/* 日期数字 - 点击显示模式 */}
+                        {!showDayNumber && clickedCell === day.date && day.isCurrentYear && (
+                          <Text 
+                            className={`day-number clicked ${hasStatus ? 'has-status' : ''} ${isFading ? 'fading' : ''}`}
+                            style={{ fontSize: `${Math.floor(cellSizePx * 0.8)}rpx` }}
+                          >
+                            {dayOfMonth}
+                          </Text>
                         )}
                         {/* 今日高亮 */}
                         {day.isToday && day.isCurrentYear && (

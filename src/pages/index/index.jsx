@@ -218,11 +218,11 @@ export default function Index() {
             <Text className='value'>{stats.targetDays} <Text className='unit'>天</Text></Text>
           </View>
           <View className='stat-col with-bg'>
-            <Text className='label'>已完成</Text>
+            <Text className='label'>已标记</Text>
             <Text className='value'>{stats.officeDays} <Text className='unit'>天</Text></Text>
           </View>
           <View className='stat-col with-bg'>
-            <Text className='label warning'>还需去</Text>
+            <Text className='label warning'>还需标记</Text>
             <Text className='value warning'>{stats.remainingDays} <Text className='unit'>天</Text></Text>
           </View>
         </View>

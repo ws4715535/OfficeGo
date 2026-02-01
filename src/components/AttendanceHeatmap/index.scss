@@ -209,13 +209,59 @@
 .day-cell {
   position: relative;
   transition: transform 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:active {
     transform: scale(1.2);
   }
 
   &.today {
-    box-shadow: 0 0 0 2rpx rgba(79, 70, 229, 0.5);
+    box-shadow: 0 0 0 2rpx rgba(79, 70, 229);
+  }
+
+  .day-number {
+    position: relative;
+    z-index: 2;
+    color: rgba(0, 0, 0, 0.3);
+    font-weight: 500;
+    line-height: 1;
+
+    &.has-status {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    // 点击显示模式 - 淡入淡出动画
+    &.clicked {
+      animation: numberFadeIn 0.2s ease-out forwards;
+    }
+
+    &.fading {
+      animation: numberFadeOut 0.5s ease-out forwards;
+    }
+  }
+}
+
+@keyframes numberFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes numberFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
   }
 }
 
