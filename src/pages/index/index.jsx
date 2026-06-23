@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow, useReady, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, Button, Image } from '@tarojs/components'
 import { Check } from '@nutui/icons-react-taro'
@@ -19,14 +19,7 @@ import './index.scss'
 // 动态问候语
 const getGreeting = () => {
   const hour = new Date().getHours()
-  const greetings = [
-    '又是充满活力的一天 ✨',
-    '今天也要加油哦 💪',
-    '美好的一天从打卡开始 🌟',
-    '愿你今天心情愉快 😊',
-    '新的一天，新的开始 🎯',
-  ]
-  
+
   // 根据时间段选择不同问候
   if (hour < 6) {
     return '夜深了，注意休息 🌙'
@@ -52,7 +45,7 @@ export default function Index() {
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [heatmapData, setHeatmapData] = useState([])
   const [heatmapLoading, setHeatmapLoading] = useState(false)
-  const [greeting, setGreeting] = useState(getGreeting())
+  const [greeting] = useState(getGreeting())
   
   // 标记是否已加载过热力图数据（避免重复请求）
   const heatmapLoadedRef = useRef(false)
@@ -145,7 +138,7 @@ export default function Index() {
     Taro.switchTab({ url: '/pages/team/index' })
   }
 
-  useShareAppMessage((res) => {
+  useShareAppMessage(() => {
     return {
       title: '来了么 - 轻松规划你的 Office Days',
       path: '/pages/index/index',
@@ -171,7 +164,7 @@ export default function Index() {
         </View>
       </View>
 
-      {/* 2. Team Banner (New) */}
+      {/* 2. Team Banner */}
       <View className='team-banner-container'>
         <View className='team-banner' onClick={handleBannerClick}>
             <View className='avatars'>
@@ -184,7 +177,7 @@ export default function Index() {
                     />
                 ))}
             </View>
-            <Text className='banner-text'>加入团队，看看他们来了么！</Text>
+            <Text className='banner-text'>加入团队，看看上班搭子来了么！</Text>
           <View className='arrow-btn'>
             <Image src={rightArrowIcon} className='arrow-icon' />
           </View>

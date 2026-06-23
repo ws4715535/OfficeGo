@@ -1,6 +1,11 @@
 export const DEFAULT_SETTINGS = {
   targetRatio: 0.4, // 默认 40%
   roundType: 'ceil', // ceil, floor, round
+  frequency: 'MONTH',
+  stepEnabled: false,
+  stepPrivacy: 'full',
+  stepAutoSync: true,
+  lastStepSyncAt: null
 };
 
 export const STORAGE_KEYS = {

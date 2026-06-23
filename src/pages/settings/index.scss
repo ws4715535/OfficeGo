@@ -84,10 +84,21 @@
         justify-content: space-between;
         align-items: center;
 
+        .header-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 8rpx;
+        }
+
         .label {
           font-size: $font-base; // 中等字号
           color: $color-text-main; // 深灰
           font-weight: $font-weight-medium;
+        }
+
+        .sub-label {
+          font-size: $font-xs;
+          color: $color-text-sub;
         }
 
         .value-display {
@@ -102,6 +113,11 @@
       }
     }
   }
+}
+
+.divider {
+  height: 2rpx;
+  background: #F3F4F6;
 }
 
 /* Segment Control */
@@ -172,6 +188,54 @@
   margin-top: -$spacing-xs; // 稍微抵消原生 Slider 的上下留白
   margin-left: -20rpx; // Widen slider
   margin-right: -20rpx;
+}
+
+.step-summary-grid {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: 24rpx;
+
+  .step-summary-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+    background: #F9FAFB;
+    border-radius: 20rpx;
+    padding: 24rpx 12rpx;
+  }
+
+  .step-value {
+    font-size: 36rpx;
+    color: $color-primary;
+    font-weight: $font-weight-bold;
+  }
+
+  .step-caption {
+    font-size: $font-xs;
+    color: $color-text-sub;
+  }
+}
+
+.secondary-btn {
+  margin-top: 24rpx;
+  background: #EEF2FF;
+  color: $color-primary;
+  font-weight: $font-weight-bold;
+  font-size: $font-base;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 20rpx;
+
+  &:active {
+    background: #E0E7FF;
+  }
+
+  &::after {
+    border: none;
+  }
 }
 
 /* Save Button */

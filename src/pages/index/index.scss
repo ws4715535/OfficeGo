@@ -179,7 +179,7 @@
       position: relative;
       display: flex;
       align-items: center; // Vertical center
-  
+
       // Flip Animation
       .flip-wrapper {
         position: absolute;
@@ -193,7 +193,7 @@
         animation-delay: 1s;
       }
     }
-  
+
     @keyframes slideUp {
       0%, 20% { transform: translateY(100%); opacity: 0; }
       25%, 90% { transform: translateY(0); opacity: 1; }

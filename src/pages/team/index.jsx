@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Button, Image, Input, Swiper, SwiperItem } from '@tarojs/components'
 import { Skeleton, pxTransform, PullToRefresh } from '@nutui/nutui-react-taro'
-import { joinTeam, createTeam, getTeamByInviteCode, getMyTeams } from '../../services/team'
+import { joinTeam, createTeam, getTeamByInviteCode } from '../../services/team'
 import { useTeam } from '../../hooks/useTeam'
 import EmptyState from './empty/index'
 import downIcon from '../../assets/down.png'
@@ -354,9 +354,28 @@ export default function Team() {
                 <View className='bg-decoration'>🍚</View>
               </View>
             </SwiperItem>
+            <SwiperItem>
+              <View
+                className='best-day-card challenge-entry-card'
+                onClick={() => Taro.navigateTo({ url: '/pages/challenge/index' })}
+              >
+                <View className='card-content'>
+                  <View className='tag'>
+                    <Text className='icon'>🏃</Text>
+                    <Text>运动挑战</Text>
+                  </View>
+                  <Text className='main-date'>运动挑战赛</Text>
+                  <View className='challenge-entry-row'>
+                    <Text className='desc'>每日打卡走起来，迈开双腿赢惊喜好礼。</Text>
+                    <View className='challenge-link'>
+                      <Text>进入挑战</Text>
+                    </View>
+                  </View>
+                </View>
+                <View className='bg-decoration'>🏃</View>
+              </View>
+            </SwiperItem>
           </Swiper>
-
-          
 
           {/* 3. Week Distribution */}
           <View className='section-container'>

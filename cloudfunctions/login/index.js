@@ -37,7 +37,14 @@ exports.main = async (event, context) => {
       settings: {
         targetPercentage: 60,
         statsCycle: 'monthly',
-        roundingRule: 'round'
+        roundingRule: 'round',
+        targetRatio: 0.4,
+        roundType: 'ceil',
+        frequency: 'MONTH',
+        stepEnabled: false,
+        stepPrivacy: 'full',
+        stepAutoSync: true,
+        lastStepSyncAt: null
       }
     }
 

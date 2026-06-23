@@ -78,7 +78,7 @@ const AuthService = {
       // Clear team related cache
       const keys = Taro.getStorageInfoSync().keys
       keys.forEach(key => {
-        if (key.startsWith('team_detail_') || key === 'last_team_id') {
+        if (key.startsWith('team_detail_') || key.startsWith('team_steps_') || key === 'last_team_id') {
             Taro.removeStorageSync(key)
         }
       })
@@ -127,6 +127,7 @@ const AuthService = {
         
         // 2. Update local storage
         Taro.setStorageSync('userInfo', {
+            ...(Taro.getStorageSync('userInfo') || {}),
             nickName: userData.nickName,
             avatarUrl: userData.avatarUrl,
             settings: userData.settings

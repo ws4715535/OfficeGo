@@ -1,5 +1,5 @@
-import { View, Text, Image, Button, Input } from '@tarojs/components'
-import React, { useState, useEffect } from 'react'
+import { View, Text, Image, Button } from '@tarojs/components'
+import { useState, useEffect } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import dayjs from 'dayjs'
 import { getTeamDetail, updateTeamName, removeMember, leaveTeam, deleteTeam } from '../../../services/team'
@@ -61,6 +61,20 @@ export default function TeamSettings() {
     }
   }
 
+  const clearTeamCache = () => {
+    const userId = Taro.getStorageSync('userId')
+    if (userId && teamId) {
+      Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+    }
+
+    const keys = Taro.getStorageInfoSync().keys || []
+    keys.forEach(key => {
+      if (key.startsWith(`team_steps_${userId}_${teamId}_`)) {
+        Taro.removeStorageSync(key)
+      }
+    })
+  }
+
   const updateStateFromData = (data) => {
       const { baseInfo, members } = data
       
@@ -119,9 +133,7 @@ export default function TeamSettings() {
             
             Taro.hideLoading()
             Taro.showToast({ title: '修改成功', icon: 'success' })
-            // 清除缓存，强制主页刷新
-            const userId = Taro.getStorageSync('userId')
-            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            clearTeamCache()
             // 更新本地状态
             setTeamInfo(prev => ({ ...prev, name: res.content }))
           } catch (err) {
@@ -147,9 +159,7 @@ export default function TeamSettings() {
             
             Taro.hideLoading()
             Taro.showToast({ title: '已移除', icon: 'success' })
-            // 清除缓存
-            const userId = Taro.getStorageSync('userId')
-            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            clearTeamCache()
             // 更新本地状态
             setTeamInfo(prev => ({
               ...prev,
@@ -178,8 +188,7 @@ export default function TeamSettings() {
             
             Taro.hideLoading()
             Taro.showToast({ title: '已退出', icon: 'success' })
-            const userId = Taro.getStorageSync('userId')
-            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            clearTeamCache()
             setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 1500)
           } catch (err) {
             Taro.hideLoading()
@@ -203,8 +212,7 @@ export default function TeamSettings() {
             
             Taro.hideLoading()
             Taro.showToast({ title: '团队已解散', icon: 'success' })
-            const userId = Taro.getStorageSync('userId')
-            if (userId && teamId) Taro.removeStorageSync(`team_detail_${userId}_${teamId}`)
+            clearTeamCache()
             setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 1500)
           } catch (err) {
             Taro.hideLoading()

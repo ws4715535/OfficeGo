@@ -96,6 +96,9 @@ async function createTeam(userId, { name, userInfo }) {
         name,
         inviteCode,
         ownerId: userId,
+        stepChallengeEnabled: true,
+        stepWeeklyGoal: 50000,
+        stepGoalType: 'total',
         createdAt: now,
         updatedAt: now
       }
@@ -347,6 +350,9 @@ async function getTeamDetail(myUserId, { teamId }) {
         name: teamInfo.name,
         inviteCode: teamInfo.inviteCode,
         ownerId: teamInfo.ownerId,
+        stepChallengeEnabled: teamInfo.stepChallengeEnabled !== false,
+        stepWeeklyGoal: Number(teamInfo.stepWeeklyGoal) > 0 ? Number(teamInfo.stepWeeklyGoal) : 50000,
+        stepGoalType: teamInfo.stepGoalType || 'total',
         createdAt: teamInfo.createdAt,
         updatedAt: teamInfo.updatedAt
       },

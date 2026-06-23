@@ -35,7 +35,12 @@ exports.main = async (event, context) => {
     
     if (nickName) updateData.nickName = nickName
     if (avatarUrl) updateData.avatarUrl = avatarUrl
-    if (settings) updateData.settings = settings
+    if (settings) {
+      updateData.settings = {
+        ...(userQuery.data[0].settings || {}),
+        ...settings
+      }
+    }
     if (event.isOnboarded !== undefined) updateData.isOnboarded = event.isOnboarded
 
     await db.collection('users').doc(userId).update({

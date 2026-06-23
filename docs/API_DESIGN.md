@@ -86,6 +86,22 @@
   - `getUserProfile`
   - `updateUser`
 
+### 2.7 微信步数（团队轻激励）
+
+- 入口页面：`pages/settings/index` + `pages/team/index`
+- 定位：自愿参与的团队轻运动激励，不与到岗考核绑定
+- MVP 功能：
+  - 用户开启微信步数同步、设置展示范围
+  - 团队页展示今日步数榜 / 本周累计榜 / 团队周目标
+  - 管理员配置团队步数目标
+- 与云端交互：
+  - `step-api.syncMySteps`
+  - `step-api.getMyStepSummary`
+  - `step-api.getTeamStepStats`
+  - `step-api.getTeamStepLeaderboard`
+  - `step-api.updateMyStepSettings`
+  - `step-api.updateTeamStepChallenge`
+
 ## 3. 数据模型（CloudBase NoSQL）
 
 ### 3.1 Collection：`users`
@@ -106,6 +122,10 @@
 | `settings.roundingRule` | String | `ceil`/`round`/`floor`（历史字段） |
 | `settings.roundType` | String | `ceil`/`round`/`floor`（当前项目常用） |
 | `settings.frequency` | String | `MONTH`/`WEEK`/`BIWEEK`（个人设置页使用） |
+| `settings.stepEnabled` | Boolean | 是否开启微信步数功能 |
+| `settings.stepPrivacy` | String | `full` / `milestone` / `hidden` |
+| `settings.stepAutoSync` | Boolean | 是否自动同步步数 |
+| `settings.lastStepSyncAt` | Date | 上次同步步数时间 |
 | `userLevel` | String | 用户分级：`normal`/`pro`/`ultra`（缺省按 normal 处理） |
 | `createdAt` | Date | 创建时间 |
 | `updatedAt` | Date | 更新时间 |
@@ -134,6 +154,9 @@
 | `name` | String | 团队名称 |
 | `inviteCode` | String | 邀请码（管理员可见） |
 | `ownerId` | String | 创建者 OpenID |
+| `stepChallengeEnabled` | Boolean | 是否开启团队步数挑战 |
+| `stepWeeklyGoal` | Number | 团队周目标步数 |
+| `stepGoalType` | String | `total` / `avg` |
 | `createdAt` | Date | 创建时间 |
 | `updatedAt` | Date | 更新时间 |
 
@@ -148,6 +171,22 @@
 | `userId` | String | 用户 OpenID（关联 users._openid） |
 | `role` | String | `admin` / `member` |
 | `joinedAt` | Date | 加入时间 |
+
+### 3.5 Collection：`user_steps_daily`
+
+- 存储用户每日步数汇总，仅保存按天聚合结果，不保存位置轨迹。
+
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `_id` | String | 文档 ID |
+| `_openid` | String | 用户 OpenID |
+| `date` | String | `YYYY-MM-DD` |
+| `stepCount` | Number | 当日步数 |
+| `source` | String | 数据来源，MVP 固定为 `wechat` |
+| `isVisibleToTeam` | Boolean | 是否允许在团队中展示 |
+| `syncDate` | Date | 本次同步时间 |
+| `createdAt` | Date | 创建时间 |
+| `updatedAt` | Date | 更新时间 |
 
 ## 4. 用户分级（normal / pro / ultra）
 
@@ -225,6 +264,26 @@ Taro.cloud.callFunction({
 - `leaveTeam`：退出团队（创建者禁止退出）
 - `deleteTeam`：解散团队（仅创建者）
 
+### 5.4 `step-api`
+
+微信步数相关 API，通过 `action` 参数区分：
+
+```js
+Taro.cloud.callFunction({
+  name: 'step-api',
+  data: { action, payload }
+})
+```
+
+#### Actions
+
+- `syncMySteps`：同步我最近 N 天步数并写入 `user_steps_daily`
+- `getMyStepSummary`：获取我的今日步数、本周累计、连续达标天数与设置
+- `getTeamStepStats`：获取团队周目标、完成率、参与人数、总步数
+- `getTeamStepLeaderboard`：获取团队今日榜 / 周榜
+- `updateMyStepSettings`：更新个人步数开关、自动同步、隐私级别
+- `updateTeamStepChallenge`：管理员更新团队步数目标与开关
+
 ## 6. 前端服务层（Service）与数据流
 
 ### 6.1 `src/services/auth.js`
@@ -249,6 +308,12 @@ Taro.cloud.callFunction({
   - 缓存：`team_detail_${userId}_${teamId}` + `last_team_id`
   - 请求去重：同 key 并发请求会被跳过
 
+### 6.5 `src/services/steps.js`
+
+- 封装 `step-api` 的 action 调用
+- `syncMySteps` 使用微信运动 cloudID 直传云函数，避免前端本地解密
+- 团队页通过 `getTeamStepStats` + `getTeamStepLeaderboard` 获取挑战进度和榜单
+
 ## 7. 本地存储（Local Storage）
 
 ### 7.1 用户侧
@@ -263,6 +328,7 @@ Taro.cloud.callFunction({
 - `ODT_RECORDS`：本地记录缓存（按日 map）
 - `team_detail_${userId}_${teamId}`：团队详情缓存
 - `last_team_id`：上次选择的团队
+- `team_steps_${userId}_${teamId}_${weekStart}`：团队步数榜与周目标缓存
 
 ## 8. 开发与运行
 

@@ -2,6 +2,7 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/onboarding/index',
+    'pages/challenge/index',
     'pages/team/index',
     'pages/team/settings/index',
     'pages/calendar/index',

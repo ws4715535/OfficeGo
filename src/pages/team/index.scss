@@ -197,6 +197,38 @@ $color-white-fixed: #FFFFFF; // Fallback definition
         }
     }
   }
+
+  &.challenge-entry-card {
+    background: linear-gradient(135deg, #06B6D4 0%, #2563EB 100%);
+    box-shadow: 0 20rpx 40rpx -10rpx rgba(37, 99, 235, 0.32);
+
+    .challenge-entry-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20rpx;
+      margin-top: 8rpx;
+
+      .desc {
+        max-width: none;
+        flex: 1;
+        margin: 0;
+      }
+    }
+
+    .challenge-link {
+      flex-shrink: 0;
+      padding: 12rpx 24rpx;
+      border-radius: $radius-full;
+      background: rgba(255, 255, 255, 0.18);
+      font-size: $font-sm;
+      font-weight: $font-weight-bold;
+    }
+
+    &:active {
+      opacity: 0.92;
+    }
+  }
 }
 
 /* Section Containers */
